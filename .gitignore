@@ -1,0 +1,12 @@
+*.xlsx
+*.xls
+*.xlsm
+_inspect.txt
+_meta.txt
+_more.txt
+_names.txt
+_parse_stats.txt
+__pycache__/
+.DS_Store
+Thumbs.db
+Графики официальные/
