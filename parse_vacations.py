@@ -586,6 +586,16 @@ def parse_iso(s):
     return date.fromisoformat(s) if s else None
 
 
+def fmt_ru(d: date | None) -> str:
+    if not d:
+        return "—"
+    return d.strftime("%d.%m.%Y")
+
+
+def fmt_period(start: str | None, end: str | None) -> str:
+    return f"{fmt_ru(parse_iso(start))} — {fmt_ru(parse_iso(end))}"
+
+
 def status_for(official, store_vacs):
     if official and store_vacs:
         for o in official:
@@ -662,8 +672,8 @@ def find_conflicts(people_list):
                         "spk": sr["fio"],
                         "spkPosition": sr["position"],
                         "spkRole": sales_role,
-                        "kladPeriod": f"{ks.isoformat()} — {ke.isoformat()}",
-                        "spkPeriod": f"{ss.isoformat()} — {se.isoformat()}",
+                        "kladPeriod": fmt_period(ks.isoformat(), ke.isoformat()),
+                        "spkPeriod": fmt_period(ss.isoformat(), se.isoformat()),
                     }
                 )
     conflicts.sort(key=lambda x: (x["overlapStart"], x["storeShort"]))
@@ -760,6 +770,46 @@ def main():
         rec["isRetail"] = rec["storeShort"] in RETAIL_STORES
         rec["isReportStaff"] = rec["isRetail"] and rec["roleGroup"] in REPORT_ROLES
         active_list.append(rec)
+    active_keys = {(norm(p["fio"]), p["storeShort"]) for p in active_list}
+    for s in staff_rows:
+        if s["storeShort"] not in RETAIL_STORES:
+            continue
+        staff_role = role_group(s.get("position") or "")
+        if staff_role not in REPORT_ROLES:
+            continue
+        key = (norm(s["fio"]), s["storeShort"])
+        existing = next(
+            (p for p in active_list if norm(p["fio"]) == key[0] and p["storeShort"] == key[1]),
+            None,
+        )
+        if existing:
+            if not existing.get("official") and not existing.get("storeVacations"):
+                existing["isNewHire"] = True
+            continue
+        if key in active_keys:
+            continue
+        active_list.append(
+            {
+                "fio": s["fio"],
+                "position": s["position"],
+                "store": s["store"],
+                "storeShort": s["storeShort"],
+                "tabNumber": "",
+                "official": [],
+                "storeVacations": [],
+                "sourceFile": "штатка 14.09.2026",
+                "roleGroup": staff_role,
+                "isRetail": True,
+                "isReportStaff": True,
+                "status": "empty",
+                "active": True,
+                "staffStatus": s.get("status") or "",
+                "isNewHire": True,
+                "hireDate": None,
+            }
+        )
+        active_keys.add(key)
+
     people_list = active_list
     people_list.sort(key=lambda r: (r["storeShort"], r["roleGroup"], r["fio"]))
 
@@ -794,6 +844,7 @@ def main():
             "match": sum(1 for p in report_people if p["status"] == "match"),
             "onlyOfficial": sum(1 for p in report_people if p["status"] == "only_official"),
             "onlyStore": sum(1 for p in report_people if p["status"] == "only_store"),
+            "newHires": sum(1 for p in report_people if p.get("isNewHire")),
         },
         "positions": positions,
         "stores": stores,

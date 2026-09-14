@@ -54,7 +54,7 @@
     }
     .page {
       position: relative; z-index: 1;
-      width: min(1180px, calc(100% - 28px));
+      width: min(1320px, calc(100% - 28px));
       margin: 0 auto;
       padding: 22px 0 56px;
     }
@@ -123,7 +123,7 @@
     }
     .stats {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 1px;
       background: rgba(66, 8, 168, 0.12);
     }
@@ -283,23 +283,56 @@
     .months span { display: grid; grid-template-columns: repeat(12, 1fr); text-align: center; }
     .months i { font-style: normal; }
     .cal { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin-top: 12px; }
-    .cal.overview { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-    .month { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
-    .month h4 { margin: 0 0 8px; font-size: 13px; font-family: var(--display); }
-    .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-    .day, .dow { font-size: 11px; text-align: center; padding: 3px 0; position: relative; border-radius: 4px; }
-    .dow { color: var(--muted); font-weight: 700; }
+    .cal.overview {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .month { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+    .month h4 { margin: 0 0 10px; font-size: 15px; font-family: var(--display); }
+    .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+    .day, .dow { font-size: 12px; text-align: center; padding: 3px 0; position: relative; border-radius: 6px; }
+    .dow { color: var(--muted); font-weight: 700; font-size: 11px; }
     .day.empty { visibility: hidden; }
     .day.named {
-      min-height: 52px;
-      padding: 2px 1px 3px;
+      min-height: 78px;
+      padding: 3px 2px 4px;
       display: flex;
       flex-direction: column;
       align-items: stretch;
       justify-content: flex-start;
+      gap: 2px;
+      background: #faf7ff;
     }
-    .day .dnum { font-size: 10px; font-weight: 800; }
-    .day .n { font-size: 9px; line-height: 1.15; font-weight: 800; overflow: hidden; }
+    .day .dnum { font-size: 11px; font-weight: 800; line-height: 1; margin-bottom: 1px; }
+    .rtag {
+      display: block;
+      font-size: 10px;
+      line-height: 1.2;
+      font-weight: 800;
+      border-radius: 4px;
+      padding: 2px 3px;
+      text-align: left;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      hyphens: auto;
+    }
+    .rtag .rrole {
+      display: block;
+      font-size: 8px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      opacity: .92;
+      font-weight: 800;
+    }
+    .rtag .rname {
+      display: block;
+      font-size: 10px;
+      line-height: 1.15;
+      font-weight: 800;
+    }
+    @media (max-width: 900px) {
+      .cal.overview { grid-template-columns: 1fr; }
+    }
     .day .t, .day .b {
       position: absolute; left: 1px; right: 1px; height: 46%;
       border-radius: 2px;
@@ -313,21 +346,20 @@
       font-family: var(--display);
       font-size: 16px;
     }
-    .events {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 8px;
-      margin: 0 0 12px;
+    .new-block {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 18px;
+      padding: 14px;
     }
-    .ev {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 8px 10px;
-      font-size: 13px;
-      background: #fffaf5;
+    .new-block .store-group {
+      margin: 0 0 16px;
     }
-    .ev.out { border-left: 4px solid var(--orange); }
-    .ev.in { border-left: 4px solid var(--p); }
+    .new-block .store-group h3 {
+      margin: 0 0 8px;
+      font-family: var(--display);
+      font-size: 17px;
+    }
     .list-block {
       background: var(--bad-bg);
       border: 1px solid var(--bad-line);
@@ -346,6 +378,9 @@
     .col.store-only { background: var(--ok-bg); border: 1px solid var(--ok-line); border-radius: 18px; padding: 14px; }
     .empty { color: var(--muted); font-weight: 650; }
     footer { color: var(--muted); font-size: 12px; font-weight: 650; margin-top: 8px; }
+    @media (max-width: 1100px) {
+      .stats { grid-template-columns: repeat(3, 1fr); }
+    }
     @media (max-width: 900px) {
       .stats, .split { grid-template-columns: 1fr 1fr; }
       .hero, .body { padding: 18px; }
@@ -373,6 +408,7 @@
           <a href="#b1">1. СПК + кладовщик</a>
           <a class="ghost" href="#b2">2. Календари магазинов</a>
           <a class="ghost" href="#b3">3. Есть оф, нет неоф</a>
+          <a class="ghost" href="#b4">4. Новые сотрудники</a>
         </div>
       </header>
       <div class="stats" id="stats"></div>
@@ -389,13 +425,18 @@
         <section class="section" id="b2">
           <div class="section-head">
             <h2><span class="num">2</span> Календарь по магазинам</h2>
-            <p>По каждому сотруднику — полные даты официального и неофициального графиков. Ниже общий календарь магазина: кто уходит и кто выходит.</p>
+            <p>По каждому сотруднику — полные даты официального и неофициального графиков. На календаре магазина — должности в отпуске, цветом по роли.</p>
           </div>
           <div class="pills" id="storePills"></div>
           <div class="legend">
             <span><i class="swatch" style="background:var(--off)"></i>официальный (ЗУП)</span>
             <span><i class="swatch" style="background:var(--unoff)"></i>неофициальный (магазин)</span>
             <span><i class="swatch conflict"></i>СПК + кладовщик в один день</span>
+            <span><i class="swatch" style="background:#16a34a"></i>СПК</span>
+            <span><i class="swatch" style="background:#2563eb"></i>ПК</span>
+            <span><i class="swatch" style="background:#f97316"></i>Кассир</span>
+            <span><i class="swatch" style="background:#9333ea"></i>Кладовщик</span>
+            <span><i class="swatch" style="background:#eab308"></i>РТЗ</span>
           </div>
           <div id="storesView"></div>
         </section>
@@ -406,6 +447,14 @@
             <p>Действующие сотрудники, у кого отпуск есть в ЗУП, но нет в файле магазина.</p>
           </div>
           <div class="list-block" id="onlyOff"></div>
+        </section>
+
+        <section class="section" id="b4">
+          <div class="section-head">
+            <h2><span class="num">4</span> Новые сотрудники без графика</h2>
+            <p>Действующие сотрудники из штатки на 14.09.2026, которых нет ни в официальном графике ЗУП, ни в файлах магазинов. Дату приёма и отпуск можно будет добавить позже.</p>
+          </div>
+          <div class="new-block" id="newHires"></div>
         </section>
         <footer id="foot"></footer>
       </div>
@@ -424,6 +473,13 @@
       "Кассир": "Кассиры",
       "РТЗ": "РТЗ",
       "Без должности": "Должность не указана"
+    };
+    const ROLE_COLOR = {
+      "СПК": { bg: "#16a34a", fg: "#fff", short: "СПК" },
+      "ПК": { bg: "#2563eb", fg: "#fff", short: "ПК" },
+      "Кассир": { bg: "#f97316", fg: "#fff", short: "Кас" },
+      "Кладовщик": { bg: "#9333ea", fg: "#fff", short: "Клад" },
+      "РТЗ": { bg: "#eab308", fg: "#1a1033", short: "РТЗ" }
     };
 
     const esc = (s) => String(s ?? "").replace(/[&<>"']/g, m => ({
@@ -446,12 +502,14 @@
     }
     function inScope(p) {
       if (!p.isRetail) return false;
+      if (p.isNewHire) return true;
       if (p.isReportStaff) return true;
       return !p.position && p.storeVacations && p.storeVacations.length;
     }
     const people = D.people.filter(inScope);
+    const schedulePeople = people.filter(p => !p.isNewHire);
     const byStore = {};
-    people.forEach(p => {
+    schedulePeople.forEach(p => {
       (byStore[p.storeShort] ||= []).push(p);
     });
     const conflictStoreSet = new Set(D.conflictStores || D.conflicts.map(c => c.storeShort));
@@ -501,6 +559,7 @@
         ["warn", s.conflictStores ?? new Set(D.conflicts.map(c=>c.storeShort)).size, "Магазинов с нарушением"],
         ["warn", s.conflicts, "Пересечений СПК+клад"],
         ["p", s.onlyOfficial, "Есть оф, нет неоф"],
+        ["ok", s.newHires ?? 0, "Новые без графика"],
         ["ok", s.droppedInactive ?? "—", "Убраны (уже не работают)"]
       ].map(([cls, n, label]) => `<article class="${cls}"><b>${n}</b><span>${label}</span></article>`).join("");
       document.getElementById("foot").textContent =
@@ -544,6 +603,16 @@
     function effective(p) {
       return (p.storeVacations && p.storeVacations.length) ? p.storeVacations : officialPeriods(p);
     }
+    function roleTag(p, iso) {
+      const rc = ROLE_COLOR[p.roleGroup] || { bg: "#94a3b8", fg: "#fff", short: p.roleGroup || "?" };
+      const period = effective(p).find(v => inPeriod(iso, v));
+      const tip = `${p.fio} · ${rc.short} · ${fmt(period?.start)} — ${fmt(period?.end)}`;
+      const name = lastName(p.fio);
+      return `<span class="rtag" style="background:${rc.bg};color:${rc.fg}" title="${esc(tip)}">
+        <span class="rrole">${esc(rc.short)}</span>
+        <span class="rname">${esc(name)}</span>
+      </span>`;
+    }
     function calendarHtml(recs) {
       const klad = recs.filter(p => p.roleGroup === "Кладовщик");
       const sales = recs.filter(p => p.roleGroup === "СПК");
@@ -559,11 +628,9 @@
           const k = klad.some(p => effective(p).some(v => inPeriod(iso, v)));
           const s = sales.some(p => effective(p).some(v => inPeriod(iso, v)));
           const conflict = k && s;
-          const names = onDay.map(p => lastName(p.fio)).filter(Boolean);
-          const title = onDay.map(p => `${p.fio} (${p.roleGroup})`).join(", ");
-          cells += `<div class="day named ${conflict?"conflict":""}" title="${esc(title)}">
+          cells += `<div class="day named ${conflict?"conflict":""}">
             <span class="dnum">${d}</span>
-            ${names.map(n => `<span class="n">${esc(n)}</span>`).join("")}
+            ${onDay.map(p => roleTag(p, iso)).join("")}
           </div>`;
         }
         return `<div class="month"><h4>${name}</h4><div class="days">
@@ -571,20 +638,6 @@
           ${cells}
         </div></div>`;
       }).join("");
-    }
-
-    function storeEvents(recs) {
-      const ev = [];
-      recs.forEach(p => {
-        effective(p).forEach(v => {
-          if (!v.start || !v.end) return;
-          ev.push({ date: v.start, type: "out", p, v });
-          ev.push({ date: addIso(v.end, 1), type: "in", p, v });
-        });
-      });
-      return ev
-        .filter(e => e.date.startsWith("2026"))
-        .sort((a, b) => a.date.localeCompare(b.date) || (a.type === "out" ? -1 : 1));
     }
 
     function personCard(p) {
@@ -611,23 +664,14 @@
           return `<div class="role-block"><h4>${ROLE_LABEL[role] || role}</h4>${list.map(personCard).join("")}</div>`;
         }).join("");
         const mark = conflictStoreSet.has(store) ? " · нарушение СПК+клад" : "";
-        const events = storeEvents(recs);
-        const eventsHtml = events.length
-          ? `<div class="events">${events.map(e => `<div class="ev ${e.type}">
-              <b>${fmt(e.date)}</b>
-              ${e.type === "out" ? "уходит" : "выходит"}
-              ${esc(e.p.fio)}
-              <div class="meta">${esc(e.p.roleGroup)} · ${fmt(e.v.start)} — ${fmt(e.v.end)}</div>
-            </div>`).join("")}</div>`
-          : "<p class='empty'>Нет дат отпуска</p>";
+        const withVac = recs.filter(p => effective(p).length);
         return `<article class="shop">
           <h3>${esc(store)}</h3>
           <div class="meta">${recs.length} чел.${mark}</div>
           ${ticks}
           ${roles || "<p class='empty'>Нет сотрудников выбранных должностей</p>"}
-          <h4 class="overview-title">Общий график магазина: кто уходит и кто выходит</h4>
-          ${eventsHtml}
-          <div class="cal overview">${calendarHtml(recs)}</div>
+          <h4 class="overview-title">Календарь магазина на 2026 год</h4>
+          <div class="cal overview">${calendarHtml(withVac)}</div>
         </article>`;
       }).join("");
     }
@@ -653,11 +697,46 @@
       document.getElementById("onlyOff").innerHTML = table(off);
     }
 
+    function newHireRow(p) {
+      const rc = ROLE_COLOR[p.roleGroup] || { bg: "#94a3b8", fg: "#fff", short: p.roleGroup || "?" };
+      return `<tr>
+        <td>${esc(p.fio)}</td>
+        <td><span class="rtag" style="display:inline-block;background:${rc.bg};color:${rc.fg};font-size:11px;padding:2px 6px">${esc(rc.short)}</span> ${esc(p.position || p.roleGroup || "—")}</td>
+        <td class="empty">—</td>
+        <td class="empty">—</td>
+      </tr>`;
+    }
+    function renderNewHires() {
+      const list = people.filter(p => p.isNewHire).sort((a, b) =>
+        a.storeShort.localeCompare(b.storeShort, "ru") ||
+        (ROLE_ORDER.indexOf(a.roleGroup) - ROLE_ORDER.indexOf(b.roleGroup)) ||
+        a.fio.localeCompare(b.fio, "ru")
+      );
+      const el = document.getElementById("newHires");
+      if (!list.length) {
+        el.innerHTML = "<p class=\"empty\">Все действующие сотрудники уже есть в графиках.</p>";
+        return;
+      }
+      const groups = {};
+      list.forEach(p => { (groups[p.storeShort] ||= []).push(p); });
+      el.innerHTML = Object.keys(groups).sort((a, b) => a.localeCompare(b, "ru")).map(store => {
+        const rows = groups[store].map(newHireRow).join("");
+        return `<div class="store-group">
+          <h3>${esc(store)} <span class="meta">(${groups[store].length})</span></h3>
+          <div style="overflow:auto"><table>
+            <thead><tr><th>Сотрудник</th><th>Должность</th><th>Дата приёма</th><th>Отпуск</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>
+        </div>`;
+      }).join("");
+    }
+
     renderStats();
     renderConflicts();
     renderPills();
     renderStores();
     renderMismatch();
+    renderNewHires();
   </script>
 </body>
 </html>
