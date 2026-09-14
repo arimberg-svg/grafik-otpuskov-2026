@@ -360,9 +360,44 @@
       font-family: var(--display);
       font-size: 17px;
     }
-    .staff-split { align-items: start; }
+    .staff-split {
+      align-items: start;
+      grid-template-columns: minmax(280px, 0.85fr) minmax(420px, 1.4fr);
+    }
     .staff-split .col h3 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
     .staff-split table { font-size: 13px; }
+    .staff-split .col.store-only { min-width: 0; }
+    tr.summer-warn { background: #fff3cd; }
+    tr.summer-warn td { border-bottom-color: #f0d78c; }
+    .date-cell {
+      min-width: 110px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .date-cell.empty-slot {
+      color: var(--muted);
+      font-weight: 650;
+      background: #fff;
+      box-shadow: inset 0 0 0 1px dashed rgba(66, 8, 168, 0.28);
+      border-radius: 6px;
+    }
+    .badge-warn {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #f59e0b;
+      color: #1a1033;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+    @media (max-width: 900px) {
+      .staff-split { grid-template-columns: 1fr; }
+    }
     .list-block {
       background: var(--bad-bg);
       border: 1px solid var(--bad-line);
@@ -465,7 +500,7 @@
             </div>
             <div class="col store-only">
               <h3>Новые без графика <span class="meta" id="newHiresCount"></span></h3>
-              <p class="meta" style="margin:0 0 10px">Есть в штатке, нет ни в ЗУП, ни в файлах магазинов</p>
+              <p class="meta" style="margin:0 0 10px">Есть в штатке, нет ни в ЗУП, ни в файлах магазинов. Дата приёма — из файла «даты приема»; плановый отпуск = +6 месяцев. Если плановая дата попадает на 15.04–15.08 — подсветка внимания.</p>
               <div id="newHires"></div>
             </div>
           </div>
@@ -718,6 +753,33 @@
         <tbody>${list.map(simplePersonRow).join("")}</tbody>
       </table></div>`;
     }
+    function dateSlot(iso, clsExtra="") {
+      if (!iso) return `<td class="date-cell empty-slot ${clsExtra}">—</td>`;
+      return `<td class="date-cell ${clsExtra}">${esc(fmt(iso))}</td>`;
+    }
+    function newHireRow(p) {
+      const warn = p.summerAttention ? "summer-warn" : "";
+      const plannedCell = p.plannedVacation
+        ? `<td class="date-cell">${esc(fmt(p.plannedVacation))}${p.summerAttention ? `<span class="badge-warn">15.04–15.08</span>` : ""}</td>`
+        : `<td class="date-cell empty-slot">—</td>`;
+      return `<tr class="${warn}">
+        <td>${esc(p.fio)}</td>
+        <td>${esc(p.position || p.roleGroup || "—")}</td>
+        <td>${esc(p.storeShort)}</td>
+        ${dateSlot(p.hireDate)}
+        ${plannedCell}
+      </tr>`;
+    }
+    function newHiresTable(list) {
+      if (!list.length) return "<p class='empty'>Нет таких сотрудников</p>";
+      return `<div style="overflow:auto"><table>
+        <thead><tr>
+          <th>ФИО</th><th>Должность</th><th>Магазин</th>
+          <th>Дата приёма</th><th>Плановый отпуск (+6 мес.)</th>
+        </tr></thead>
+        <tbody>${list.map(newHireRow).join("")}</tbody>
+      </table></div>`;
+    }
     function renderMismatch() {
       const off = people.filter(p => p.status === "only_official").sort((a,b)=>a.storeShort.localeCompare(b.storeShort,"ru") || a.fio.localeCompare(b.fio,"ru"));
       document.getElementById("onlyOff").innerHTML = table(off);
@@ -728,12 +790,16 @@
         a.storeShort.localeCompare(b.storeShort, "ru") || a.fio.localeCompare(b.fio, "ru")
       );
       const news = (D.newHires || []).slice().sort((a, b) =>
+        (a.summerAttention === b.summerAttention ? 0 : a.summerAttention ? -1 : 1) ||
         a.storeShort.localeCompare(b.storeShort, "ru") || a.fio.localeCompare(b.fio, "ru")
       );
+      const withDate = news.filter(p => p.hireDate).length;
+      const summer = news.filter(p => p.summerAttention).length;
       document.getElementById("dismissedCount").textContent = `(${dismissed.length})`;
-      document.getElementById("newHiresCount").textContent = `(${news.length})`;
+      document.getElementById("newHiresCount").textContent =
+        `(${news.length}, дат приёма ${withDate}${summer ? `, внимание ${summer}` : ""})`;
       document.getElementById("dismissedList").innerHTML = simpleTable(dismissed);
-      document.getElementById("newHires").innerHTML = simpleTable(news);
+      document.getElementById("newHires").innerHTML = newHiresTable(news);
     }
 
     renderStats();

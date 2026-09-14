@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent
 STORE_DIR = ROOT / "Графики официальные"
 OFFICIAL = ROOT / "график отпусков ЗУП ИП Пафнутьева ЕП. (офиц).xlsx"
 STAFF_FILE = ROOT / "данные о работниках на 14.09.2026.mxl"
+HIRE_FILE = ROOT / "даты приема.mxl"
 OUT_JS = ROOT / "data.js"
 
 HEADER_SKIP = {
@@ -242,6 +243,83 @@ def parse_staff():
             continue
         current_pos = re.sub(r"\s+", " ", c).strip()
     return rows
+
+
+def add_months(d: date, months: int) -> date:
+    y = d.year + (d.month - 1 + months) // 12
+    m = (d.month - 1 + months) % 12 + 1
+    leap = y % 4 == 0 and (y % 100 != 0 or y % 400 == 0)
+    dim = [31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1]
+    return date(y, m, min(d.day, dim))
+
+
+def is_summer_attention(d: date | None) -> bool:
+    """Плановый отпуск в высокий сезон: 15.04 — 15.08."""
+    if not d:
+        return False
+    start = date(d.year, 4, 15)
+    end = date(d.year, 8, 15)
+    return start <= d <= end
+
+
+def parse_hire_dates():
+    """Hire dates from 1C MXL export «даты приема»."""
+    path = HIRE_FILE if HIRE_FILE.exists() else next(
+        (p for p in ROOT.iterdir() if p.suffix.lower() == ".mxl" and "прием" in p.name.lower()),
+        None,
+    )
+    if not path or not path.exists():
+        return []
+    raw = path.read_bytes()
+    start = raw.find(b"{")
+    text = raw[start:].decode("utf-8", errors="replace") if start >= 0 else ""
+    cells = [
+        c.strip().replace("\xa0", " ")
+        for c in re.findall(r'\{\s*"#"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\}', text)
+    ]
+    date_re = re.compile(r"^\d{1,2}\.\d{1,2}\.\d{4}$")
+    fio_re = re.compile(r"^[А-ЯЁ][а-яёА-ЯЁ\-]+(?:\s+[А-ЯЁа-яё\-]+){1,3}$")
+    skip = {
+        "индикатор ошибки",
+        "есть файлы",
+        "дата приема",
+        "дата",
+        "номер",
+        "организация",
+        "сотрудник",
+        "комментарий",
+        "у михалыча",
+    }
+    rows = []
+    for i, c in enumerate(cells):
+        if not fio_re.match(c):
+            continue
+        if norm(c) in skip or c.lower().startswith("вместо"):
+            continue
+        back = cells[max(0, i - 5) : i]
+        dates = [parse_date(x) for x in back if date_re.match(x)]
+        dates = [d for d in dates if d]
+        if not dates:
+            continue
+        rows.append({"fio": re.sub(r"\s+", " ", c).strip(), "hireDate": dates[0]})
+    return rows
+
+
+def match_hire_date(fio: str, hire_rows: list) -> date | None:
+    fio_keys = name_keys(fio)
+    fio_parts = set(name_tokens(fio))
+    exact = [h for h in hire_rows if norm(h["fio"]) == norm(fio)]
+    if exact:
+        return exact[0]["hireDate"]
+    strong = []
+    for h in hire_rows:
+        inter = fio_keys & name_keys(h["fio"])
+        parts_inter = fio_parts & set(name_tokens(h["fio"]))
+        if len(parts_inter) >= 2 or any(len(k.split()) >= 2 for k in inter):
+            strong.append(h)
+    if len(strong) == 1:
+        return strong[0]["hireDate"]
+    return None
 
 
 def attach_staff(rec, staff_dict):
@@ -819,18 +897,43 @@ def main():
         if p["isReportStaff"]
         or (p["isRetail"] and not p.get("position") and p.get("storeVacations"))
     ]
-    new_hires = [
-        {
-            "fio": p["fio"],
-            "position": p.get("position") or "",
-            "storeShort": p["storeShort"],
-            "roleGroup": p.get("roleGroup") or "",
-            "hireDate": p.get("hireDate"),
-        }
-        for p in report_people
-        if p.get("isNewHire")
-    ]
-    new_hires.sort(key=lambda r: (r["storeShort"], r["roleGroup"], r["fio"]))
+    new_hires = []
+    hire_rows = parse_hire_dates()
+    hire_matched = 0
+    summer_attention = 0
+    for p in report_people:
+        if not p.get("isNewHire"):
+            continue
+        hire = p.get("hireDate")
+        if isinstance(hire, str) and hire:
+            hire = parse_iso(hire)
+        if not hire:
+            hire = match_hire_date(p["fio"], hire_rows)
+        planned = add_months(hire, 6) if hire else None
+        summer = is_summer_attention(planned)
+        if hire:
+            hire_matched += 1
+        if summer:
+            summer_attention += 1
+        new_hires.append(
+            {
+                "fio": p["fio"],
+                "position": p.get("position") or "",
+                "storeShort": p["storeShort"],
+                "roleGroup": p.get("roleGroup") or "",
+                "hireDate": hire.isoformat() if hire else None,
+                "plannedVacation": planned.isoformat() if planned else None,
+                "summerAttention": summer,
+            }
+        )
+    new_hires.sort(
+        key=lambda r: (
+            0 if r.get("summerAttention") else 1,
+            r["storeShort"],
+            r["roleGroup"],
+            r["fio"],
+        )
+    )
 
     dismissed = []
     for rec in dropped_inactive:
@@ -874,6 +977,9 @@ def main():
             "onlyOfficial": sum(1 for p in active_scheduled if p["status"] == "only_official"),
             "onlyStore": sum(1 for p in active_scheduled if p["status"] == "only_store"),
             "newHires": len(new_hires),
+            "newHiresWithDate": hire_matched,
+            "newHiresSummer": summer_attention,
+            "hireDatesFile": len(hire_rows),
         },
         "positions": positions,
         "stores": stores,
