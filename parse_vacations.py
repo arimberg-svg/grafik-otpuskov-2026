@@ -141,20 +141,23 @@ def file_store(filename: str) -> str:
     return filename
 
 
+REPORT_ROLES = ("Кладовщик", "СПК", "ПК", "Кассир", "РТЗ")
+
+
 def role_group(position: str) -> str:
     p = norm(position)
     if "кладовщик" in p:
         return "Кладовщик"
-    if "продавец" in p and "консультант" in p:
-        return "СПК"
-    if "старший продавец" in p:
-        return "СПК"
     if "кассир" in p:
         return "Кассир"
+    if "работник торгового" in p or p in {"ртз", "ртз."}:
+        return "РТЗ"
+    if "старш" in p and "продавец" in p:
+        return "СПК"
+    if "продавец" in p and "консультант" in p:
+        return "ПК"
     if "управляющ" in p:
         return "Управляющий"
-    if "работник торгового" in p:
-        return "Работник зала"
     if "оператор склада" in p:
         return "Оператор склада"
     if not p:
@@ -164,6 +167,11 @@ def role_group(position: str) -> str:
 
 def is_spk(position: str) -> bool:
     return role_group(position) == "СПК"
+
+
+def is_sales_for_conflict(position: str) -> bool:
+    """СПК, а если в ЗУП не выделен — продавец-консультант."""
+    return role_group(position) in {"СПК", "ПК"}
 
 
 def is_klad(position: str) -> bool:
@@ -546,9 +554,9 @@ def find_conflicts(people_list):
     conflicts = []
     for store, recs in sorted(by_store.items()):
         klad = [r for r in recs if is_klad(r["position"])]
-        spk = [r for r in recs if is_spk(r["position"])]
+        sales = [r for r in recs if is_sales_for_conflict(r["position"])]
         k_periods = [p for r in klad for p in effective_periods(r)]
-        s_periods = [p for r in spk for p in effective_periods(r)]
+        s_periods = [p for r in sales for p in effective_periods(r)]
         seen = set()
         for ks, ke, kr in k_periods:
             if not ks or not ke:
@@ -564,6 +572,7 @@ def find_conflicts(people_list):
                 if key in seen:
                     continue
                 seen.add(key)
+                sales_role = role_group(sr["position"])
                 conflicts.append(
                     {
                         "storeShort": store,
@@ -574,6 +583,7 @@ def find_conflicts(people_list):
                         "kladPosition": kr["position"],
                         "spk": sr["fio"],
                         "spkPosition": sr["position"],
+                        "spkRole": sales_role,
                         "kladPeriod": f"{ks.isoformat()} — {ke.isoformat()}",
                         "spkPeriod": f"{ss.isoformat()} — {se.isoformat()}",
                     }
@@ -637,43 +647,48 @@ def main():
     for rec in people.values():
         rec["roleGroup"] = role_group(rec["position"])
         rec["isRetail"] = rec["storeShort"] in RETAIL_STORES
+        rec["isReportStaff"] = rec["isRetail"] and rec["roleGroup"] in REPORT_ROLES
         rec["status"] = status_for(rec["official"], rec["storeVacations"])
         rec["official"].sort(key=lambda x: x["start"] or "")
         rec["storeVacations"].sort(key=lambda x: x["start"] or "")
         people_list.append(rec)
     people_list.sort(key=lambda r: (r["storeShort"], r["roleGroup"], r["fio"]))
 
-    conflicts = find_conflicts(people_list)
+    report_people = [
+        p
+        for p in people_list
+        if p["isReportStaff"]
+        or (p["isRetail"] and not p.get("position") and p.get("storeVacations"))
+    ]
+    conflicts = find_conflicts(report_people)
+    conflict_stores = sorted({c["storeShort"] for c in conflicts})
 
-    positions = sorted({p["position"] for p in people_list if p["position"]})
-    stores = sorted({p["storeShort"] for p in people_list if p["storeShort"]})
-    role_groups = []
-    for preferred in ["Кладовщик", "СПК", "Кассир", "Управляющий", "Работник зала", "Оператор склада"]:
-        if any(p["roleGroup"] == preferred for p in people_list):
-            role_groups.append(preferred)
-    for g in sorted({p["roleGroup"] for p in people_list}):
-        if g not in role_groups:
-            role_groups.append(g)
+    positions = sorted({p["position"] for p in report_people if p["position"]})
+    stores = sorted({p["storeShort"] for p in report_people if p["storeShort"]})
+    role_groups = [g for g in REPORT_ROLES if any(p["roleGroup"] == g for p in report_people)]
 
     payload = {
         "generated": date.today().isoformat(),
         "year": 2026,
         "stats": {
-            "people": len(people_list),
-            "officialRows": sum(len(p["official"]) for p in people_list),
-            "storeRows": sum(len(p["storeVacations"]) for p in people_list),
+            "people": len(report_people),
+            "officialRows": sum(len(p["official"]) for p in report_people),
+            "storeRows": sum(len(p["storeVacations"]) for p in report_people),
             "matchedStoreRows": matched_n,
-            "unmatchedStorePeople": len(extra_keys),
+            "unmatchedStorePeople": sum(1 for p in report_people if p.get("unmatched")),
             "conflicts": len(conflicts),
-            "differ": sum(1 for p in people_list if p["status"] == "differ"),
-            "match": sum(1 for p in people_list if p["status"] == "match"),
-            "onlyOfficial": sum(1 for p in people_list if p["status"] == "only_official"),
-            "onlyStore": sum(1 for p in people_list if p["status"] == "only_store"),
+            "conflictStores": len(conflict_stores),
+            "differ": sum(1 for p in report_people if p["status"] == "differ"),
+            "match": sum(1 for p in report_people if p["status"] == "match"),
+            "onlyOfficial": sum(1 for p in report_people if p["status"] == "only_official"),
+            "onlyStore": sum(1 for p in report_people if p["status"] == "only_store"),
         },
         "positions": positions,
         "stores": stores,
         "roleGroups": role_groups,
-        "retailStores": sorted(RETAIL_STORES),
+        "reportRoles": list(REPORT_ROLES),
+        "retailStores": sorted(s for s in RETAIL_STORES if any(p["storeShort"] == s for p in report_people)),
+        "conflictStores": conflict_stores,
         "people": people_list,
         "conflicts": conflicts,
     }
@@ -687,8 +702,9 @@ def main():
         f"officialPeriods={payload['stats']['officialRows']}",
         f"storePeriods={payload['stats']['storeRows']}",
         f"matchedStoreRows={matched_n}",
-        f"unmatchedStorePeople={len(extra_keys)}",
+        f"unmatchedStorePeople={payload['stats']['unmatchedStorePeople']}",
         f"conflicts={len(conflicts)}",
+        f"conflictStores={payload['stats']['conflictStores']}",
         f"status match={payload['stats']['match']} differ={payload['stats']['differ']} onlyOfficial={payload['stats']['onlyOfficial']} onlyStore={payload['stats']['onlyStore']}",
         "",
         "UNMATCHED:",
@@ -703,7 +719,18 @@ def main():
             f"клад {c['kladovshchik']} || СПК {c['spk']}"
         )
     summary.write_text("\n".join(lines), encoding="utf-8")
-    print("wrote", OUT_JS, "people", len(people_list), "conflicts", len(conflicts), "unmatched", len(extra_keys))
+    print(
+        "wrote",
+        OUT_JS,
+        "reportPeople",
+        len(report_people),
+        "allPeople",
+        len(people_list),
+        "conflicts",
+        len(conflicts),
+        "unmatched",
+        payload["stats"]["unmatchedStorePeople"],
+    )
 
 
 if __name__ == "__main__":

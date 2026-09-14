@@ -3,311 +3,404 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>График отпусков 2026 — сравнение</title>
+  <title>График отпусков 2026 — розница</title>
+  <meta name="theme-color" content="#4208a8" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geologica:wght@600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #f3efe6;
-      --paper: #fffcf7;
-      --ink: #1f1a17;
-      --muted: #6b6259;
-      --line: #e2d8c8;
-      --accent: #9a3412;
-      --klad: #1d4ed8;
-      --spk: #c2410c;
-      --bad: #b91c1c;
-      --ok: #166534;
-      --warn: #b45309;
-      --miss: #57534e;
+      --p: #4208a8;
+      --p2: #5b21d6;
+      --orange: #f07a14;
+      --orange-deep: #c45e0a;
+      --paper: #ffffff;
+      --bg: #fff7ef;
+      --ink: #1a1033;
+      --muted: #5c5278;
+      --ok: #c45e0a;
+      --ok-deep: #8a3f08;
+      --ok-bg: #fff4e8;
+      --ok-line: #f0c08a;
+      --bad: #7b1fa2;
+      --bad-deep: #4a148c;
+      --bad-bg: #f6eefc;
+      --bad-line: #d4b8ef;
+      --warn: #c81e3a;
+      --warn-deep: #9b1530;
+      --warn-bg: #fdecee;
+      --warn-line: #f3b4bd;
+      --line: rgba(66, 8, 168, 0.16);
+      --off: #4208a8;
+      --unoff: #f07a14;
+      --font: "Manrope", "Segoe UI", sans-serif;
+      --display: "Geologica", "Manrope", sans-serif;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 "Segoe UI", system-ui, sans-serif; }
-    a { color: var(--accent); }
-    header {
-      padding: 28px 28px 16px;
-      border-bottom: 1px solid var(--line);
-      background: var(--paper);
-    }
-    header h1 { margin: 0 0 6px; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; }
-    header p { margin: 0; color: var(--muted); max-width: 820px; }
-    .rule {
-      margin-top: 12px;
-      padding: 10px 12px;
-      border: 1px solid #f1c4b0;
-      background: #fff4ee;
-      color: var(--accent);
-      font-weight: 600;
-      display: inline-block;
-    }
-    .wrap { padding: 20px 28px 48px; }
-    .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
-    .stat {
-      background: var(--paper);
-      border: 1px solid var(--line);
-      padding: 12px 14px;
-      min-width: 120px;
-    }
-    .stat b { display: block; font-size: 22px; line-height: 1.1; }
-    .stat span { color: var(--muted); font-size: 12px; }
-    .stat.danger b { color: var(--bad); }
-    nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 16px; }
-    nav.tabs button, .pills button {
-      border: 1px solid var(--line);
-      background: var(--paper);
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
       color: var(--ink);
-      padding: 8px 12px;
-      cursor: pointer;
-      font: inherit;
+      background: var(--bg);
+      line-height: 1.45;
     }
-    nav.tabs button.active, .pills button.active {
-      background: var(--ink);
-      color: #fff;
-      border-color: var(--ink);
+    .glow {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(900px 420px at 8% -8%, rgba(240, 122, 20, 0.22), transparent 58%),
+        radial-gradient(700px 380px at 96% 0%, rgba(66, 8, 168, 0.16), transparent 55%),
+        linear-gradient(180deg, #ffffff 0%, #fff7ef 42%, #f3e8ff 100%);
     }
-    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .filters input, .filters select {
-      border: 1px solid var(--line);
+    .page {
+      position: relative; z-index: 1;
+      width: min(1180px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 22px 0 56px;
+    }
+    .postcard {
       background: var(--paper);
-      padding: 8px 10px;
-      font: inherit;
-      min-width: 180px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 18px 50px rgba(66, 8, 168, 0.08);
     }
-    table { width: 100%; border-collapse: collapse; background: var(--paper); }
-    th, td { border-bottom: 1px solid var(--line); padding: 9px 10px; text-align: left; vertical-align: top; }
-    th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; background: #f7f2e8; position: sticky; top: 0; }
-    .badge {
-      display: inline-block;
-      font-size: 12px;
-      padding: 2px 7px;
-      border: 1px solid currentColor;
+    .hero {
+      position: relative;
+      padding: 28px 32px 26px;
+      background: linear-gradient(135deg, #4208a8 0%, #6b21c8 52%, #f07a14 100%);
+      color: #fff;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: "";
+      position: absolute; right: -40px; top: -50px;
+      width: 220px; height: 220px; border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+    }
+    .hero-top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; position: relative; z-index: 1;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand img {
+      height: 42px; width: auto; display: block;
+      background: #fff; border-radius: 10px; padding: 6px 10px;
+    }
+    .chip {
+      font-size: 12px; font-weight: 800; letter-spacing: .1em;
+      text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,.35);
+      padding: 7px 12px; border-radius: 999px;
       white-space: nowrap;
     }
-    .st-match { color: var(--ok); }
-    .st-differ { color: var(--warn); }
-    .st-only_official { color: var(--miss); }
-    .st-only_store { color: var(--spk); }
-    .period { display: block; font-variant-numeric: tabular-nums; }
-    .period.moved { color: var(--warn); }
-    .note { color: var(--muted); font-size: 12px; }
-    .conflict {
-      background: var(--paper);
-      border: 1px solid #f1c4b0;
-      border-left: 4px solid var(--bad);
-      padding: 12px 14px;
-      margin-bottom: 10px;
+    .hero h1 {
+      position: relative; z-index: 1;
+      font-family: var(--display);
+      font-size: clamp(26px, 4.4vw, 40px);
+      line-height: 1.12; letter-spacing: -.03em;
+      margin: 22px 0 8px; font-weight: 800;
     }
-    .conflict h3 { margin: 0 0 6px; font-size: 16px; }
-    .legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin: 8px 0 14px; }
-    .swatch { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
-    .cal { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-    .month { background: var(--paper); border: 1px solid var(--line); padding: 10px; }
-    .month h4 { margin: 0 0 8px; font-size: 13px; }
-    .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-    .day, .dow {
-      font-size: 11px;
-      text-align: center;
-      padding: 4px 0;
+    .hero p {
+      position: relative; z-index: 1;
+      margin: 0 0 16px; max-width: 72ch;
+      color: rgba(255,255,255,.9); font-weight: 600; font-size: 15px;
     }
-    .dow { color: var(--muted); }
-    .day.empty { visibility: hidden; }
-    .day.klad { background: #dbeafe; color: var(--klad); }
-    .day.spk { background: #ffedd5; color: var(--spk); }
-    .day.both { background: #fecaca; color: var(--bad); font-weight: 700; }
-    .gantt-store { background: var(--paper); border: 1px solid var(--line); margin-bottom: 12px; padding: 12px; }
-    .gantt-store h3 { margin: 0 0 8px; font-size: 16px; }
+    .links {
+      position: relative; z-index: 1;
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .links a {
+      display: inline-flex; align-items: center;
+      background: #fff; color: var(--p);
+      font-weight: 800; font-size: 13px;
+      padding: 10px 14px; border-radius: 999px;
+      text-decoration: none;
+    }
+    .links a.ghost {
+      background: transparent; color: #fff;
+      border: 1px solid rgba(255,255,255,.4);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      background: rgba(66, 8, 168, 0.12);
+    }
+    .stats article { background: #fff; padding: 16px 18px; }
+    .stats b {
+      display: block; font-family: var(--display);
+      font-size: 28px; letter-spacing: -.03em; line-height: 1;
+    }
+    .stats span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    .stats .warn b { color: var(--warn); }
+    .stats .p b { color: var(--p); }
+    .stats .ok b { color: var(--orange); }
+    .body { padding: 26px 28px 36px; }
+    .section { margin: 8px 0 36px; scroll-margin-top: 16px; }
+    .section-head {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 12px; margin: 0 0 14px; flex-wrap: wrap;
+    }
+    .section-head h2 {
+      margin: 0; font-family: var(--display); font-size: 22px;
+      letter-spacing: -.02em; display: flex; align-items: center; gap: 10px;
+    }
+    .num {
+      width: 28px; height: 28px; border-radius: 9px;
+      background: var(--p); color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800;
+    }
+    .section-head p { margin: 0; color: var(--muted); font-size: 13px; font-weight: 650; max-width: 62ch; }
+    .note {
+      margin: 0 0 16px;
+      background: #fff8f0;
+      border: 1px solid var(--ok-line);
+      color: var(--ok-deep);
+      border-radius: 16px;
+      padding: 12px 16px;
+      font-size: 13px; font-weight: 650;
+    }
+    .store-card {
+      border: 1px solid var(--warn-line);
+      background: var(--warn-bg);
+      border-radius: 18px;
+      padding: 16px 16px 12px;
+      margin: 0 0 12px;
+    }
+    .store-card h3 {
+      margin: 0 0 8px;
+      font-family: var(--display);
+      font-size: 18px;
+      letter-spacing: -.02em;
+      color: var(--warn-deep);
+    }
+    .hit {
+      background: #fff;
+      border: 1px solid var(--warn-line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 0 0 8px;
+    }
+    .hit b { font-family: var(--display); }
+    .meta { color: var(--muted); font-size: 12px; font-weight: 650; }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+    .pills button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .pills button.active {
+      background: var(--p);
+      color: #fff;
+      border-color: var(--p);
+    }
+    .pills button.has-bad { box-shadow: inset 0 0 0 1px var(--warn); }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; font-weight: 650; margin: 0 0 14px; }
+    .swatch { display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; border-radius: 4px; }
+    .swatch.split {
+      background: linear-gradient(180deg, rgba(66,8,168,.55) 50%, rgba(240,122,20,.7) 50%);
+    }
+    .swatch.conflict { background: var(--warn-bg); box-shadow: inset 0 0 0 2px var(--warn); }
+    .shop {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px;
+      margin: 0 0 16px;
+      background: #fff;
+    }
+    .shop.hidden { display: none; }
+    .shop h3 {
+      margin: 0 0 4px;
+      font-family: var(--display);
+      font-size: 20px;
+    }
+    .role-block { margin: 12px 0 4px; }
+    .role-block h4 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--p);
+    }
+    .person {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 0 0 8px;
+      background: #fffaf5;
+    }
+    .person .who { font-weight: 800; }
     .track { display: flex; gap: 8px; margin: 6px 0; align-items: center; }
-    .track b { width: 110px; font-size: 12px; flex: none; }
-    .barwrap { position: relative; height: 22px; flex: 1; background: #f3eee4; overflow: hidden; }
+    .track b { width: 52px; font-size: 11px; flex: none; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+    .barwrap { position: relative; height: 18px; flex: 1; background: #f6f0ff; overflow: hidden; border-radius: 6px; }
     .bar {
       position: absolute; top: 2px; bottom: 2px;
       font-size: 10px; color: #fff; overflow: hidden; white-space: nowrap; padding: 0 4px;
+      border-radius: 4px; font-weight: 700;
     }
-    .bar.klad { background: var(--klad); }
-    .bar.spk { background: var(--spk); }
-    .hidden { display: none !important; }
-    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-    footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
-    @media (max-width: 800px) {
-      header, .wrap { padding: 16px; }
-      table { font-size: 13px; }
+    .bar.off { background: var(--off); }
+    .bar.unoff { background: var(--unoff); }
+    .months {
+      display: grid; grid-template-columns: 52px 1fr; gap: 8px; margin: 2px 0 8px;
+      font-size: 10px; color: var(--muted); font-weight: 700;
+    }
+    .months span { display: grid; grid-template-columns: repeat(12, 1fr); text-align: center; }
+    .months i { font-style: normal; }
+    .cal { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin-top: 12px; }
+    .month { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
+    .month h4 { margin: 0 0 8px; font-size: 13px; font-family: var(--display); }
+    .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+    .day, .dow { font-size: 11px; text-align: center; padding: 3px 0; position: relative; border-radius: 4px; }
+    .dow { color: var(--muted); font-weight: 700; }
+    .day.empty { visibility: hidden; }
+    .day .t, .day .b {
+      position: absolute; left: 1px; right: 1px; height: 46%;
+      border-radius: 2px;
+    }
+    .day .t { top: 2px; background: rgba(66, 8, 168, 0.45); }
+    .day .b { bottom: 2px; background: rgba(240, 122, 20, 0.55); }
+    .day.conflict { box-shadow: inset 0 0 0 2px var(--warn); background: var(--warn-bg); font-weight: 800; }
+    .day span { position: relative; z-index: 1; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 16px; overflow: hidden; }
+    th, td { border-bottom: 1px solid var(--line); padding: 9px 10px; text-align: left; vertical-align: top; }
+    th {
+      font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--muted); font-weight: 800; background: #f6f0ff;
+    }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .col h3 { margin: 0 0 10px; font-family: var(--display); font-size: 16px; }
+    .col.off-only { background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 18px; padding: 14px; }
+    .col.store-only { background: var(--ok-bg); border: 1px solid var(--ok-line); border-radius: 18px; padding: 14px; }
+    .empty { color: var(--muted); font-weight: 650; }
+    footer { color: var(--muted); font-size: 12px; font-weight: 650; margin-top: 8px; }
+    @media (max-width: 900px) {
+      .stats, .split { grid-template-columns: 1fr 1fr; }
+      .hero, .body { padding: 18px; }
+    }
+    @media (max-width: 640px) {
+      .stats, .split { grid-template-columns: 1fr; }
+      .chip { display: none; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>График отпусков 2026</h1>
-    <p>Сравнение официального графика ЗУП (форма Т-7) с реальными датами из файлов магазинов. Должность и магазин берутся из официального графика.</p>
-    <div class="rule">Правило: кладовщик и СПК одного магазина не должны быть в отпуске одновременно</div>
-  </header>
-  <div class="wrap">
-    <div class="stats" id="stats"></div>
-    <nav class="tabs" id="mainTabs">
-      <button data-tab="compare" class="active">Сравнение</button>
-      <button data-tab="roles">По должностям</button>
-      <button data-tab="conflicts">Конфликты кладовщик + СПК</button>
-      <button data-tab="calendar">Календарь магазина</button>
-    </nav>
+  <div class="glow"></div>
+  <div class="page">
+    <article class="postcard">
+      <header class="hero">
+        <div class="hero-top">
+          <div class="brand">
+            <img src="assets/logo.png" alt="У Михалыча" />
+          </div>
+          <div class="chip">Розница · 2026</div>
+        </div>
+        <h1>График отпусков магазинов</h1>
+        <p>Только розница: кассиры, РТЗ, кладовщики, старшие продавцы-консультанты и продавцы-консультанты. Официальный график ЗУП сравнивается с файлами магазинов.</p>
+        <div class="links">
+          <a href="#b1">1. СПК + кладовщик</a>
+          <a class="ghost" href="#b2">2. Календари магазинов</a>
+          <a class="ghost" href="#b3">3. Есть в одном графике</a>
+        </div>
+      </header>
+      <div class="stats" id="stats"></div>
+      <div class="body">
+        <section class="section" id="b1">
+          <div class="section-head">
+            <h2><span class="num">1</span> СПК и кладовщик одновременно</h2>
+            <p>Нарушение правила: в одном магазине кладовщик и СПК (если в ЗУП не выделен — продавец-консультант) не должны быть в отпуске в одни дни.</p>
+          </div>
+          <p class="note">Для проверки берём даты из файла магазина, если они есть, иначе — официальный график.</p>
+          <div id="conflictList"></div>
+        </section>
 
-    <section id="tab-compare">
-      <div class="filters">
-        <input id="q" type="search" placeholder="Поиск: ФИО, должность, магазин" />
-        <select id="storeFilter"><option value="">Все магазины</option></select>
-        <select id="statusFilter">
-          <option value="">Любой статус</option>
-          <option value="differ">Отличается</option>
-          <option value="match">Совпадает</option>
-          <option value="only_official">Только официальный</option>
-          <option value="only_store">Только магазин</option>
-        </select>
-        <select id="retailFilter">
-          <option value="retail">Только магазины</option>
-          <option value="all">Магазины и офис</option>
-        </select>
-      </div>
-      <div class="legend">
-        <span class="badge st-match">совпадает</span>
-        <span class="badge st-differ">даты разные</span>
-        <span class="badge st-only_official">нет в файле магазина</span>
-        <span class="badge st-only_store">нет в официальном графике</span>
-      </div>
-      <div style="overflow:auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Сотрудник</th>
-              <th>Должность</th>
-              <th>Магазин</th>
-              <th>Плановый отпуск (офиц. график)</th>
-              <th>Реальный отпуск (файл магазина)</th>
-              <th>Статус</th>
-            </tr>
-          </thead>
-          <tbody id="compareBody"></tbody>
-        </table>
-      </div>
-    </section>
+        <section class="section" id="b2">
+          <div class="section-head">
+            <h2><span class="num">2</span> Календарь по магазинам</h2>
+            <p>По каждой должности — полоски официального и неофициального графиков. В месяцах верх ячейки — оф, низ — неоф. Красная рамка — пересечение СПК/ПК и кладовщика.</p>
+          </div>
+          <div class="pills" id="storePills"></div>
+          <div class="legend">
+            <span><i class="swatch" style="background:var(--off)"></i>официальный (ЗУП)</span>
+            <span><i class="swatch" style="background:var(--unoff)"></i>неофициальный (магазин)</span>
+            <span><i class="swatch split"></i>оба графика</span>
+            <span><i class="swatch conflict"></i>СПК/ПК + кладовщик</span>
+          </div>
+          <div id="storesView"></div>
+        </section>
 
-    <section id="tab-roles" class="hidden">
-      <div class="pills" id="rolePills"></div>
-      <div class="filters">
-        <select id="roleStoreFilter"><option value="">Все магазины</option></select>
+        <section class="section" id="b3">
+          <div class="section-head">
+            <h2><span class="num">3</span> Есть в одном графике, нет в другом</h2>
+            <p>Сотрудники, у кого отпуск есть только в официальном ЗУП или только в файле магазина.</p>
+          </div>
+          <div class="split">
+            <div class="col off-only">
+              <h3>Есть официальный, нет в магазине</h3>
+              <div id="onlyOff"></div>
+            </div>
+            <div class="col store-only">
+              <h3>Есть в магазине, нет официального</h3>
+              <div id="onlyStore"></div>
+            </div>
+          </div>
+        </section>
+        <footer id="foot"></footer>
       </div>
-      <div id="roleView"></div>
-    </section>
-
-    <section id="tab-conflicts" class="hidden">
-      <p class="note">Пересечение дат кладовщика и СПК в одном магазине. Для проверки берётся реальный график магазина, если он есть, иначе — официальный.</p>
-      <div id="conflictList"></div>
-    </section>
-
-    <section id="tab-calendar" class="hidden">
-      <div class="filters">
-        <select id="calStore"></select>
-      </div>
-      <div class="legend">
-        <span><i class="swatch" style="background:#dbeafe"></i>кладовщик</span>
-        <span><i class="swatch" style="background:#ffedd5"></i>СПК</span>
-        <span><i class="swatch" style="background:#fecaca"></i>оба сразу — нарушение</span>
-      </div>
-      <div id="gantt"></div>
-      <div class="cal" id="cal"></div>
-    </section>
-
-    <footer id="foot"></footer>
+    </article>
   </div>
   <script src="data.js"></script>
   <script>
     const D = window.VACATION_DATA;
     const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
-    const ST = {
-      match: "совпадает",
-      differ: "даты разные",
-      only_official: "только офиц.",
-      only_store: "только магазин",
-      empty: "нет дат"
+    const MONTH_SHORT = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
+    const ROLE_ORDER = D.reportRoles || ["Кладовщик","СПК","ПК","Кассир","РТЗ"];
+    const ROLE_LABEL = {
+      "Кладовщик": "Кладовщики",
+      "СПК": "Старшие продавцы-консультанты",
+      "ПК": "Продавцы-консультанты",
+      "Кассир": "Кассиры",
+      "РТЗ": "РТЗ",
+      "Без должности": "Должность не указана"
     };
 
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, m => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+    }[m]));
     const fmt = (iso) => {
       if (!iso) return "—";
       const [y,m,d] = iso.split("-");
       return `${d}.${m}.${y}`;
     };
-    const periodsHtml = (list, official=false) => {
+    const periodsTxt = (list) => {
       if (!list || !list.length) return "—";
-      return list.map(p => {
-        const moved = official && p.movedTo && p.movedTo.length
-          ? `<span class="note"> перенос на ${p.movedTo.map(fmt).join(", ")}</span>` : "";
-        return `<span class="period">${fmt(p.start)} — ${fmt(p.end)} <span class="note">(${p.days} дн.)</span>${moved}</span>`;
-      }).join("");
+      return list.map(p => `${fmt(p.start)} — ${fmt(p.end)} (${p.days} дн.)`).join("; ");
     };
-
-    function fillSelect(sel, items, withAll) {
-      const cur = sel.value;
-      sel.innerHTML = withAll ? `<option value="">${withAll}</option>` : "";
-      items.forEach(s => {
-        const o = document.createElement("option");
-        o.value = s; o.textContent = s;
-        sel.appendChild(o);
+    function inScope(p) {
+      if (!p.isRetail) return false;
+      if (p.isReportStaff) return true;
+      return !p.position && p.storeVacations && p.storeVacations.length;
+    }
+    const people = D.people.filter(inScope);
+    const byStore = {};
+    people.forEach(p => {
+      (byStore[p.storeShort] ||= []).push(p);
+    });
+    const conflictStoreSet = new Set(D.conflictStores || D.conflicts.map(c => c.storeShort));
+    const stores = (D.retailStores || Object.keys(byStore))
+      .filter(s => byStore[s])
+      .sort((a, b) => {
+        const da = conflictStoreSet.has(a) ? 0 : 1;
+        const db = conflictStoreSet.has(b) ? 0 : 1;
+        return da - db || a.localeCompare(b, "ru");
       });
-      if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
-    }
-
-    function renderStats() {
-      const s = D.stats;
-      document.getElementById("stats").innerHTML = [
-        ["Сотрудников", s.people],
-        ["Совпадает", s.match],
-        ["Даты разные", s.differ],
-        ["Только офиц.", s.onlyOfficial],
-        ["Только магазин", s.onlyStore],
-        ["Конфликты СПК+клад", s.conflicts, "danger"]
-      ].map(([label, n, cls]) => `<div class="stat ${cls||""}"><b>${n}</b><span>${label}</span></div>`).join("");
-      document.getElementById("foot").textContent =
-        `Сводка собрана ${D.generated}. Официальных периодов: ${s.officialRows}, из файлов магазинов: ${s.storeRows}.`;
-    }
-
-    function filteredPeople() {
-      const q = (document.getElementById("q").value || "").trim().toLowerCase();
-      const store = document.getElementById("storeFilter").value;
-      const status = document.getElementById("statusFilter").value;
-      const retail = document.getElementById("retailFilter").value;
-      return D.people.filter(p => {
-        if (retail !== "all" && !p.isRetail) return false;
-        if (store && p.storeShort !== store) return false;
-        if (status && p.status !== status) return false;
-        if (q) {
-          const hay = `${p.fio} ${p.position} ${p.storeShort} ${p.store}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
-        return true;
-      });
-    }
-
-    function renderCompare() {
-      const body = document.getElementById("compareBody");
-      const rows = filteredPeople();
-      body.innerHTML = rows.map(p => `<tr>
-        <td>${p.fio}</td>
-        <td>${p.position || "—"}<div class="note">${p.roleGroup || ""}</div></td>
-        <td>${p.storeShort}</td>
-        <td>${periodsHtml(p.official, true)}</td>
-        <td>${periodsHtml(p.storeVacations)}</td>
-        <td><span class="badge st-${p.status}">${ST[p.status] || p.status}</span></td>
-      </tr>`).join("") || `<tr><td colspan="6">Нет строк по фильтру</td></tr>`;
-    }
-
-    let currentRole = "Кладовщик";
-    function renderRolePills() {
-      const wrap = document.getElementById("rolePills");
-      wrap.innerHTML = D.roleGroups.map(g => {
-        const n = D.people.filter(p => p.roleGroup === g).length;
-        return `<button data-role="${g}" class="${g===currentRole?"active":""}">${g} (${n})</button>`;
-      }).join("");
-      wrap.querySelectorAll("button").forEach(b => b.onclick = () => {
-        currentRole = b.dataset.role;
-        renderRolePills();
-        renderRoleView();
-      });
-    }
 
     function yearPos(iso) {
       const d = new Date(iso + "T00:00:00");
@@ -316,94 +409,108 @@
       const t = (d - start) / (end - start);
       return Math.max(0, Math.min(1, t)) * 100;
     }
+    function bars(list, cls) {
+      return (list || []).map(v => {
+        if (!v.start || !v.end) return "";
+        const left = yearPos(v.start);
+        const right = yearPos(v.end);
+        return `<div class="bar ${cls}" style="left:${left}%;width:${Math.max(1.2, right-left)}%">${fmt(v.start)}</div>`;
+      }).join("");
+    }
+    function inPeriod(iso, p) {
+      return p.start && p.end && iso >= p.start && iso <= p.end;
+    }
+    function officialPeriods(p) {
+      return (p.official || []).flatMap(o => {
+        if (o.movedTo && o.movedTo.length) {
+          return o.movedTo.map(m => {
+            const d = new Date(m + "T00:00:00");
+            d.setDate(d.getDate() + (o.days || 14) - 1);
+            return { start: m, end: d.toISOString().slice(0,10), days: o.days || 14 };
+          });
+        }
+        return o.start ? [o] : [];
+      });
+    }
 
-    function renderRoleView() {
-      const store = document.getElementById("roleStoreFilter").value;
-      const list = D.people.filter(p => p.roleGroup === currentRole && (!store || p.storeShort === store));
-      const el = document.getElementById("roleView");
-      if (!list.length) { el.innerHTML = "<p>Нет сотрудников в этой должности по фильтру.</p>"; return; }
-      el.innerHTML = `<p class="note">${list.length} чел. · ${currentRole}. Полоски — реальный график магазина, если есть, иначе официальный.</p>` +
-        list.map(p => {
-          const periods = (p.storeVacations && p.storeVacations.length) ? p.storeVacations : p.official;
-          const bars = periods.map(v => {
-            if (!v.start || !v.end) return "";
-            const left = yearPos(v.start);
-            const right = yearPos(v.end);
-            const cls = currentRole === "Кладовщик" ? "klad" : (currentRole === "СПК" ? "spk" : "klad");
-            return `<div class="bar ${cls}" style="left:${left}%;width:${Math.max(1.2, right-left)}%">${fmt(v.start)}</div>`;
-          }).join("");
-          return `<div class="gantt-store">
-            <h3>${p.fio} · ${p.storeShort}</h3>
-            <div class="note">${p.position || "должность не найдена в официальном графике"}</div>
-            <div class="track"><b>2026</b><div class="barwrap">${bars}</div></div>
-            <div class="note">офиц.: ${periodsHtml(p.official, true)} · магазин: ${periodsHtml(p.storeVacations)}</div>
-          </div>`;
-        }).join("");
+    function renderStats() {
+      const s = D.stats;
+      document.getElementById("stats").innerHTML = [
+        ["p", s.people, "Сотрудников розницы"],
+        ["warn", s.conflictStores ?? new Set(D.conflicts.map(c=>c.storeShort)).size, "Магазинов с нарушением"],
+        ["warn", s.conflicts, "Пересечений СПК+клад"],
+        ["p", s.onlyOfficial, "Только официальный"],
+        ["ok", s.onlyStore, "Только магазин"]
+      ].map(([cls, n, label]) => `<article class="${cls}"><b>${n}</b><span>${label}</span></article>`).join("");
+      document.getElementById("foot").textContent =
+        `Сеть «У Михалыча» · сводка ${D.generated} · в отчёте ${s.people} сотрудников выбранных должностей · оф. периодов ${s.officialRows}, из магазинов ${s.storeRows}`;
     }
 
     function renderConflicts() {
       const el = document.getElementById("conflictList");
       if (!D.conflicts.length) {
-        el.innerHTML = "<p>Пересечений кладовщика и СПК в магазинах не найдено.</p>";
+        el.innerHTML = "<p class=\"empty\">Пересечений кладовщика и СПК/продавца-консультанта не найдено.</p>";
         return;
       }
-      el.innerHTML = D.conflicts.map(c => `<article class="conflict">
-        <h3>${c.storeShort}: ${fmt(c.overlapStart)} — ${fmt(c.overlapEnd)} (${c.days} дн.)</h3>
-        <div>Кладовщик: <b>${c.kladovshchik}</b> <span class="note">${c.kladPeriod}</span></div>
-        <div>СПК: <b>${c.spk}</b> <span class="note">${c.spkPeriod}</span></div>
-      </article>`).join("");
+      const groups = {};
+      D.conflicts.forEach(c => { (groups[c.storeShort] ||= []).push(c); });
+      el.innerHTML = Object.keys(groups).sort().map(store => {
+        const items = groups[store].map(c => `<div class="hit">
+          <div><b>${fmt(c.overlapStart)} — ${fmt(c.overlapEnd)}</b> <span class="meta">${c.days} дн.</span></div>
+          <div>Кладовщик: <b>${esc(c.kladovshchik)}</b> <span class="meta">${esc(c.kladPeriod)}</span></div>
+          <div>${esc(c.spkRole || "СПК")}: <b>${esc(c.spk)}</b> <span class="meta">${esc(c.spkPosition)} · ${esc(c.spkPeriod)}</span></div>
+        </div>`).join("");
+        return `<article class="store-card"><h3>${esc(store)}</h3>${items}</article>`;
+      }).join("");
     }
 
-    function effective(p) {
-      if (p.storeVacations && p.storeVacations.length) return p.storeVacations;
-      return (p.official || []).flatMap(o => {
-        if (o.movedTo && o.movedTo.length) {
-          return o.movedTo.map(m => ({start:m, end: addDays(m, o.days || 14)}));
-        }
-        return o.start ? [o] : [];
+    let currentStore = "all";
+    function renderPills() {
+      const wrap = document.getElementById("storePills");
+      const all = `<button data-store="all" class="${currentStore==="all"?"active":""}">Все магазины</button>`;
+      wrap.innerHTML = all + stores.map(s => {
+        const bad = conflictStoreSet.has(s) ? "has-bad" : "";
+        const n = (byStore[s] || []).length;
+        return `<button data-store="${esc(s)}" class="${bad} ${currentStore===s?"active":""}">${esc(s)} (${n})</button>`;
+      }).join("");
+      wrap.querySelectorAll("button").forEach(b => b.onclick = () => {
+        currentStore = b.dataset.store;
+        renderPills();
+        renderStores();
       });
     }
-    function addDays(iso, days) {
-      const d = new Date(iso + "T00:00:00");
-      d.setDate(d.getDate() + days - 1);
-      return d.toISOString().slice(0,10);
-    }
-    function inPeriod(iso, p) {
-      return p.start && p.end && iso >= p.start && iso <= p.end;
-    }
 
-    function renderCalendar() {
-      const store = document.getElementById("calStore").value;
-      const recs = D.people.filter(p => p.storeShort === store);
+    function calendarHtml(recs) {
       const klad = recs.filter(p => p.roleGroup === "Кладовщик");
-      const spk = recs.filter(p => p.roleGroup === "СПК");
-      const gantt = document.getElementById("gantt");
-      const mkBars = (list, cls) => list.map(p => effective(p).map(v => {
-        if (!v.start || !v.end) return "";
-        const left = yearPos(v.start);
-        const right = yearPos(v.end);
-        return `<div class="bar ${cls}" style="left:${left}%;width:${Math.max(1.2, right-left)}%" title="${p.fio}">${p.fio.split(" ")[0]} ${fmt(v.start)}</div>`;
-      }).join("")).join("");
-      gantt.innerHTML = `<div class="gantt-store">
-        <h3>${store}</h3>
-        <div class="track"><b>Кладовщик</b><div class="barwrap">${mkBars(klad,"klad") || ""}</div></div>
-        <div class="track"><b>СПК</b><div class="barwrap">${mkBars(spk,"spk") || ""}</div></div>
-        <div class="note">Кладовщики: ${klad.map(p=>p.fio).join(", ") || "нет"} · СПК: ${spk.map(p=>p.fio).join(", ") || "нет"}</div>
-      </div>`;
-
-      const cal = document.getElementById("cal");
-      cal.innerHTML = MONTHS.map((name, mi) => {
+      const sales = recs.filter(p => p.roleGroup === "СПК" || p.roleGroup === "ПК");
+      return MONTHS.map((name, mi) => {
         const first = new Date(2026, mi, 1);
         const startDow = (first.getDay() + 6) % 7;
-        const dim = new Date(2026, mi+1, 0).getDate();
+        const dim = new Date(2026, mi + 1, 0).getDate();
         let cells = "";
-        for (let i=0;i<startDow;i++) cells += `<div class="day empty"></div>`;
-        for (let d=1; d<=dim; d++) {
+        for (let i = 0; i < startDow; i++) cells += `<div class="day empty"></div>`;
+        for (let d = 1; d <= dim; d++) {
           const iso = `2026-${String(mi+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-          const k = klad.some(p => effective(p).some(v => inPeriod(iso, v)));
-          const s = spk.some(p => effective(p).some(v => inPeriod(iso, v)));
-          const cls = k && s ? "both" : k ? "klad" : s ? "spk" : "";
-          cells += `<div class="day ${cls}">${d}</div>`;
+          const offPeople = recs.filter(p => officialPeriods(p).some(v => inPeriod(iso, v)));
+          const unoffPeople = recs.filter(p => (p.storeVacations||[]).some(v => inPeriod(iso, v)));
+          const k = klad.some(p => {
+            const src = (p.storeVacations && p.storeVacations.length) ? p.storeVacations : officialPeriods(p);
+            return src.some(v => inPeriod(iso, v));
+          });
+          const s = sales.some(p => {
+            const src = (p.storeVacations && p.storeVacations.length) ? p.storeVacations : officialPeriods(p);
+            return src.some(v => inPeriod(iso, v));
+          });
+          const conflict = k && s;
+          const title = [
+            offPeople.length ? "оф: " + offPeople.map(p => p.fio).join(", ") : "",
+            unoffPeople.length ? "неоф: " + unoffPeople.map(p => p.fio).join(", ") : ""
+          ].filter(Boolean).join(" | ");
+          cells += `<div class="day ${conflict?"conflict":""}" title="${esc(title)}">
+            ${offPeople.length ? "<i class='t'></i>" : ""}
+            ${unoffPeople.length ? "<i class='b'></i>" : ""}
+            <span>${d}</span>
+          </div>`;
         }
         return `<div class="month"><h4>${name}</h4><div class="days">
           ${["пн","вт","ср","чт","пт","сб","вс"].map(x=>`<div class="dow">${x}</div>`).join("")}
@@ -412,35 +519,66 @@
       }).join("");
     }
 
-    function showTab(id) {
-      ["compare","roles","conflicts","calendar"].forEach(t => {
-        document.getElementById("tab-"+t).classList.toggle("hidden", t !== id);
-        document.querySelector(`#mainTabs [data-tab="${t}"]`).classList.toggle("active", t === id);
-      });
-      if (id === "calendar") renderCalendar();
-      if (id === "roles") renderRoleView();
+    function personCard(p) {
+      const role = ROLE_LABEL[p.roleGroup] || p.roleGroup || "Должность не указана";
+      return `<div class="person">
+        <div class="who">${esc(p.fio)}</div>
+        <div class="meta">${esc(p.position || role)}</div>
+        <div class="track"><b>оф</b><div class="barwrap">${bars(officialPeriods(p), "off")}</div></div>
+        <div class="track"><b>неоф</b><div class="barwrap">${bars(p.storeVacations, "unoff")}</div></div>
+      </div>`;
     }
 
-    document.getElementById("mainTabs").onclick = (e) => {
-      const b = e.target.closest("button");
-      if (b) showTab(b.dataset.tab);
-    };
-    ["q","storeFilter","statusFilter","retailFilter"].forEach(id => {
-      document.getElementById(id).addEventListener("input", renderCompare);
-      document.getElementById(id).addEventListener("change", renderCompare);
-    });
-    document.getElementById("roleStoreFilter").addEventListener("change", renderRoleView);
-    document.getElementById("calStore").addEventListener("change", renderCalendar);
+    function renderStores() {
+      const el = document.getElementById("storesView");
+      const show = currentStore === "all" ? stores : [currentStore];
+      const ticks = `<div class="months"><b></b><span>${MONTH_SHORT.map(m=>`<i>${m}</i>`).join("")}</span></div>`;
+      el.innerHTML = show.map(store => {
+        const recs = byStore[store] || [];
+        const roles = [...ROLE_ORDER, "Без должности"].map(role => {
+          const list = recs.filter(p => (p.roleGroup || "Без должности") === role);
+          if (!list.length) return "";
+          return `<div class="role-block"><h4>${ROLE_LABEL[role] || role}</h4>${list.map(personCard).join("")}</div>`;
+        }).join("");
+        const mark = conflictStoreSet.has(store) ? " · нарушение СПК+клад" : "";
+        return `<article class="shop">
+          <h3>${esc(store)}</h3>
+          <div class="meta">${recs.length} чел.${mark}</div>
+          ${ticks}
+          ${roles || "<p class='empty'>Нет сотрудников выбранных должностей</p>"}
+          <div class="cal">${calendarHtml(recs)}</div>
+        </article>`;
+      }).join("");
+    }
 
-    fillSelect(document.getElementById("storeFilter"), D.stores, "Все магазины");
-    fillSelect(document.getElementById("roleStoreFilter"), D.retailStores, "Все магазины");
-    fillSelect(document.getElementById("calStore"), D.retailStores);
+    function personRow(p) {
+      return `<tr>
+        <td>${esc(p.fio)}</td>
+        <td>${esc(p.position || p.roleGroup || "—")}</td>
+        <td>${esc(p.storeShort)}</td>
+        <td>${esc(periodsTxt(p.official))}</td>
+        <td>${esc(periodsTxt(p.storeVacations))}</td>
+      </tr>`;
+    }
+    function table(list) {
+      if (!list.length) return "<p class='empty'>Нет таких сотрудников</p>";
+      return `<div style="overflow:auto"><table>
+        <thead><tr><th>Сотрудник</th><th>Должность</th><th>Магазин</th><th>Официальный</th><th>Магазин</th></tr></thead>
+        <tbody>${list.map(personRow).join("")}</tbody>
+      </table></div>`;
+    }
+    function renderMismatch() {
+      const off = people.filter(p => p.status === "only_official").sort((a,b)=>a.storeShort.localeCompare(b.storeShort) || a.fio.localeCompare(b.fio));
+      const st = people.filter(p => p.status === "only_store").sort((a,b)=>a.storeShort.localeCompare(b.storeShort) || a.fio.localeCompare(b.fio));
+      document.getElementById("onlyOff").innerHTML = table(off);
+      document.getElementById("onlyStore").innerHTML = table(st);
+    }
+
     renderStats();
-    renderCompare();
-    renderRolePills();
-    renderRoleView();
     renderConflicts();
-    if (D.retailStores.length) renderCalendar();
+    renderPills();
+    renderStores();
+    renderMismatch();
   </script>
 </body>
 </html>
