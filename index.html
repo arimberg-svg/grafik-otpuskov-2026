@@ -324,11 +324,18 @@
       opacity: .92;
       font-weight: 800;
     }
-    .rtag .rname {
-      display: block;
-      font-size: 10px;
-      line-height: 1.15;
-      font-weight: 800;
+    .rtag.past {
+      background: #c4c4c8 !important;
+      color: #5a5a5e !important;
+      opacity: 0.85;
+    }
+    .day.past-day {
+      background: #f3f3f5;
+      opacity: 0.92;
+    }
+    .day.past-day .dnum { color: #8a8a90; }
+    .day.today-day {
+      box-shadow: inset 0 0 0 2px var(--p);
     }
     @media (max-width: 900px) {
       .cal.overview { grid-template-columns: 1fr; }
@@ -441,7 +448,7 @@
           <div class="chip">Розница · 2026</div>
         </div>
         <h1>График отпусков магазинов</h1>
-        <p>Только действующие сотрудники розницы на 14.09.2026: кассиры, РТЗ, кладовщики, СПК и продавцы-консультанты.</p>
+        <p>Только действующие сотрудники розницы на 14.09.2026: кассиры, РТЗ, кладовщики, СПК, продавцы-консультанты и менеджеры по работе с клиентами.</p>
         <div class="links">
           <a href="#b1">1. СПК + кладовщик</a>
           <a class="ghost" href="#b2">2. Календари магазинов</a>
@@ -475,6 +482,9 @@
             <span><i class="swatch" style="background:#f97316"></i>Кассир</span>
             <span><i class="swatch" style="background:#9333ea"></i>Кладовщик</span>
             <span><i class="swatch" style="background:#eab308"></i>РТЗ</span>
+            <span><i class="swatch" style="background:#0d9488"></i>Менеджер</span>
+            <span><i class="swatch" style="background:#16a34a"></i>ещё впереди / сейчас</span>
+            <span><i class="swatch" style="background:#c4c4c8"></i>уже прошли</span>
           </div>
           <div id="storesView"></div>
         </section>
@@ -514,13 +524,14 @@
     const D = window.VACATION_DATA;
     const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
     const MONTH_SHORT = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
-    const ROLE_ORDER = D.reportRoles || ["Кладовщик","СПК","ПК","Кассир","РТЗ"];
+    const ROLE_ORDER = D.reportRoles || ["Кладовщик","СПК","ПК","Кассир","РТЗ","Менеджер"];
     const ROLE_LABEL = {
       "Кладовщик": "Кладовщики",
       "СПК": "Старшие продавцы-консультанты",
       "ПК": "Продавцы-консультанты",
       "Кассир": "Кассиры",
       "РТЗ": "РТЗ",
+      "Менеджер": "Менеджеры по работе с клиентами",
       "Без должности": "Должность не указана"
     };
     const ROLE_COLOR = {
@@ -528,7 +539,8 @@
       "ПК": { bg: "#2563eb", fg: "#fff", short: "ПК" },
       "Кассир": { bg: "#f97316", fg: "#fff", short: "Кас" },
       "Кладовщик": { bg: "#9333ea", fg: "#fff", short: "Клад" },
-      "РТЗ": { bg: "#eab308", fg: "#1a1033", short: "РТЗ" }
+      "РТЗ": { bg: "#eab308", fg: "#1a1033", short: "РТЗ" },
+      "Менеджер": { bg: "#0d9488", fg: "#fff", short: "Мен" }
     };
 
     const esc = (s) => String(s ?? "").replace(/[&<>"']/g, m => ({
@@ -650,12 +662,20 @@
     function effective(p) {
       return (p.storeVacations && p.storeVacations.length) ? p.storeVacations : officialPeriods(p);
     }
+    function todayIso() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    }
+    const TODAY = todayIso();
     function roleTag(p, iso) {
       const rc = ROLE_COLOR[p.roleGroup] || { bg: "#94a3b8", fg: "#fff", short: p.roleGroup || "?" };
       const period = effective(p).find(v => inPeriod(iso, v));
-      const tip = `${p.fio} · ${rc.short} · ${fmt(period?.start)} — ${fmt(period?.end)}`;
+      const past = iso < TODAY;
+      const tip = `${p.fio} · ${rc.short} · ${fmt(period?.start)} — ${fmt(period?.end)}${past ? " · уже прошёл" : " · впереди / сейчас"}`;
       const name = lastName(p.fio);
-      return `<span class="rtag" style="background:${rc.bg};color:${rc.fg}" title="${esc(tip)}">
+      const bg = past ? "#c4c4c8" : rc.bg;
+      const fg = past ? "#5a5a5e" : rc.fg;
+      return `<span class="rtag ${past ? "past" : "ahead"}" style="background:${bg};color:${fg}" title="${esc(tip)}">
         <span class="rrole">${esc(rc.short)}</span>
         <span class="rname">${esc(name)}</span>
       </span>`;
@@ -675,7 +695,8 @@
           const k = klad.some(p => effective(p).some(v => inPeriod(iso, v)));
           const s = sales.some(p => effective(p).some(v => inPeriod(iso, v)));
           const conflict = k && s;
-          cells += `<div class="day named ${conflict?"conflict":""}">
+          const dayState = iso < TODAY ? "past-day" : (iso === TODAY ? "today-day" : "");
+          cells += `<div class="day named ${conflict?"conflict":""} ${dayState}">
             <span class="dnum">${d}</span>
             ${onDay.map(p => roleTag(p, iso)).join("")}
           </div>`;

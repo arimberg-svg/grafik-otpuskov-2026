@@ -143,7 +143,7 @@ def file_store(filename: str) -> str:
     return filename
 
 
-REPORT_ROLES = ("Кладовщик", "СПК", "ПК", "Кассир", "РТЗ")
+REPORT_ROLES = ("Кладовщик", "СПК", "ПК", "Кассир", "РТЗ", "Менеджер")
 
 
 def role_group(position: str) -> str:
@@ -156,6 +156,8 @@ def role_group(position: str) -> str:
         return "Кассир"
     if "работник торгового" in p or p in {"ртз", "ртз."}:
         return "РТЗ"
+    if "менеджер по работе с клиентами" in p:
+        return "Менеджер"
     if "старш" in p and "продавец" in p:
         return "СПК"
     if "продавец" in p and "консультант" in p:
