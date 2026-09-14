@@ -145,6 +145,26 @@ def file_store(filename: str) -> str:
 
 REPORT_ROLES = ("Кладовщик", "СПК", "ПК", "Кассир", "РТЗ", "Менеджер")
 
+# Short / maiden / abbreviated names → current full FIO
+FIO_CANONICAL = {
+    "котков са": "Котков Сергей Андреевич",
+    "котков с а": "Котков Сергей Андреевич",
+    "белоногов юв": "Белоногов Юрий Владимирович",
+    "белоногов ю в": "Белоногов Юрий Владимирович",
+    "григорьева мария ивановна": "Узкоглазова Мария Ивановна",
+}
+
+
+def canonicalize_fio(fio: str) -> str:
+    key = norm(fio)
+    if key in FIO_CANONICAL:
+        return FIO_CANONICAL[key]
+    # "Котков С.А." / "Котков С. А."
+    compact = re.sub(r"[.\s]+", " ", key).strip()
+    if compact in FIO_CANONICAL:
+        return FIO_CANONICAL[compact]
+    return re.sub(r"\s+", " ", (fio or "")).strip()
+
 
 def role_group(position: str) -> str:
     p = norm(position)
@@ -303,7 +323,7 @@ def parse_hire_dates():
         dates = [d for d in dates if d]
         if not dates:
             continue
-        rows.append({"fio": re.sub(r"\s+", " ", c).strip(), "hireDate": dates[0]})
+        rows.append({"fio": re.sub(r"\s+", " ", canonicalize_fio(c)).strip(), "hireDate": dates[0]})
     return rows
 
 
@@ -715,12 +735,14 @@ def effective_periods(rec, prefer_store=True):
 
 
 def find_conflicts(people_list):
+    """СПК+кладовщик and same-role overlaps within one store."""
     by_store = defaultdict(list)
     for rec in people_list:
         if rec["storeShort"] in RETAIL_STORES:
             by_store[rec["storeShort"]].append(rec)
     conflicts = []
     for store, recs in sorted(by_store.items()):
+        # 1) СПК + кладовщик
         klad = [r for r in recs if is_klad(r)]
         sales = [r for r in recs if is_spk(r)]
         k_periods = [p for r in klad for p in effective_periods(r)]
@@ -736,17 +758,28 @@ def find_conflicts(people_list):
                     continue
                 os = max(ks, ss)
                 oe = min(ke, se)
-                key = (store, kr["fio"], sr["fio"], os.isoformat(), oe.isoformat())
+                key = ("spk_klad", store, kr["fio"], sr["fio"], os.isoformat(), oe.isoformat())
                 if key in seen:
                     continue
                 seen.add(key)
                 sales_role = sr.get("roleGroup") or role_group(sr["position"])
                 conflicts.append(
                     {
+                        "type": "spk_klad",
                         "storeShort": store,
                         "overlapStart": os.isoformat(),
                         "overlapEnd": oe.isoformat(),
                         "days": (oe - os).days + 1,
+                        "roleGroup": "СПК+Кладовщик",
+                        "personA": kr["fio"],
+                        "positionA": kr["position"],
+                        "roleA": "Кладовщик",
+                        "periodA": fmt_period(ks.isoformat(), ke.isoformat()),
+                        "personB": sr["fio"],
+                        "positionB": sr["position"],
+                        "roleB": sales_role,
+                        "periodB": fmt_period(ss.isoformat(), se.isoformat()),
+                        # legacy fields for older UI
                         "kladovshchik": kr["fio"],
                         "kladPosition": kr["position"],
                         "spk": sr["fio"],
@@ -756,16 +789,96 @@ def find_conflicts(people_list):
                         "spkPeriod": fmt_period(ss.isoformat(), se.isoformat()),
                     }
                 )
-    conflicts.sort(key=lambda x: (x["overlapStart"], x["storeShort"]))
+
+        # 2) same role: two cashiers / two SPK / two ПК / …
+        by_role = defaultdict(list)
+        for r in recs:
+            rg = r.get("roleGroup") or role_group(r.get("position") or "")
+            if rg in REPORT_ROLES:
+                by_role[rg].append(r)
+        for rg, role_recs in by_role.items():
+            if len(role_recs) < 2:
+                continue
+            periods = [(p, r) for r in role_recs for p in effective_periods(r)]
+            for i, ((as_, ae, ar), _) in enumerate(periods):
+                if not as_ or not ae:
+                    continue
+                for (bs, be, br), _ in periods[i + 1 :]:
+                    if not bs or not be:
+                        continue
+                    if ar["fio"] == br["fio"]:
+                        continue
+                    if not periods_overlap(as_, ae, bs, be):
+                        continue
+                    os = max(as_, bs)
+                    oe = min(ae, be)
+                    pair = tuple(sorted([ar["fio"], br["fio"]]))
+                    key = ("same_role", store, rg, pair[0], pair[1], os.isoformat(), oe.isoformat())
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    conflicts.append(
+                        {
+                            "type": "same_role",
+                            "storeShort": store,
+                            "overlapStart": os.isoformat(),
+                            "overlapEnd": oe.isoformat(),
+                            "days": (oe - os).days + 1,
+                            "roleGroup": rg,
+                            "personA": ar["fio"],
+                            "positionA": ar.get("position") or rg,
+                            "roleA": rg,
+                            "periodA": fmt_period(as_.isoformat(), ae.isoformat()),
+                            "personB": br["fio"],
+                            "positionB": br.get("position") or rg,
+                            "roleB": rg,
+                            "periodB": fmt_period(bs.isoformat(), be.isoformat()),
+                        }
+                    )
+    conflicts.sort(key=lambda x: (x["type"] != "spk_klad", x["overlapStart"], x["storeShort"]))
     return conflicts
+
+
+def merge_people_by_fio(people: dict):
+    """Canonicalize FIO and merge duplicate keys after maiden/abbrev renames."""
+    merged = {}
+    for (_old_key_fio, ss), rec in list(people.items()):
+        fio = canonicalize_fio(rec["fio"])
+        rec["fio"] = fio
+        key = (norm(fio), ss)
+        existing = merged.get(key)
+        if not existing:
+            merged[key] = rec
+            continue
+        # merge vacations into the richer record
+        for o in rec.get("official") or []:
+            if o not in existing["official"]:
+                existing["official"].append(o)
+        for v in rec.get("storeVacations") or []:
+            if v not in existing["storeVacations"]:
+                existing["storeVacations"].append(v)
+        if not existing.get("position") and rec.get("position"):
+            existing["position"] = rec["position"]
+        if rec.get("tabNumber") and not existing.get("tabNumber"):
+            existing["tabNumber"] = rec["tabNumber"]
+        if not existing.get("storeFile") and rec.get("storeFile"):
+            existing["storeFile"] = rec["storeFile"]
+    people.clear()
+    people.update(merged)
 
 
 def main():
     people = parse_official()
+    # apply maiden/abbrev names early so matching works
+    for rec in people.values():
+        rec["fio"] = canonicalize_fio(rec["fio"])
+    merge_people_by_fio(people)
+
     store_vacs = parse_store_files()
     unmatched = []
     matched_n = 0
     for v in store_vacs:
+        v["fio"] = canonicalize_fio(v["fio"])
         rec, how = match_person(v["fio"], v["storeShort"], people)
         item = {
             "start": v["start"],
@@ -786,7 +899,7 @@ def main():
     extra_keys = {}
     for v in unmatched:
         key = (norm(v["fio"]), v["storeShort"])
-        rec = extra_keys.get(key)
+        rec = extra_keys.get(key) or people.get(key)
         if not rec:
             rec = {
                 "fio": v["fio"],
@@ -811,6 +924,8 @@ def main():
             }
         )
 
+    merge_people_by_fio(people)
+
     people_list = []
     for rec in people.values():
         rec["roleGroup"] = role_group(rec["position"])
@@ -823,6 +938,8 @@ def main():
     people_list.sort(key=lambda r: (r["storeShort"], r["roleGroup"], r["fio"]))
 
     staff_rows = parse_staff()
+    for s in staff_rows:
+        s["fio"] = canonicalize_fio(s["fio"])
     staff_dict = {}
     for s in staff_rows:
         key = (norm(s["fio"]), s["storeShort"])
@@ -954,6 +1071,8 @@ def main():
 
     conflicts = find_conflicts([p for p in report_people if not p.get("isNewHire")])
     conflict_stores = sorted({c["storeShort"] for c in conflicts})
+    spk_klad = [c for c in conflicts if c.get("type") == "spk_klad"]
+    same_role = [c for c in conflicts if c.get("type") == "same_role"]
 
     positions = sorted({p["position"] for p in report_people if p["position"] and not p.get("isNewHire")})
     stores = sorted({p["storeShort"] for p in report_people if p["storeShort"] and not p.get("isNewHire")})
@@ -973,6 +1092,8 @@ def main():
             "matchedStoreRows": matched_n,
             "unmatchedStorePeople": sum(1 for p in active_scheduled if p.get("unmatched")),
             "conflicts": len(conflicts),
+            "spkKladConflicts": len(spk_klad),
+            "sameRoleConflicts": len(same_role),
             "conflictStores": len(conflict_stores),
             "differ": sum(1 for p in active_scheduled if p["status"] == "differ"),
             "match": sum(1 for p in active_scheduled if p["status"] == "match"),
@@ -1022,10 +1143,16 @@ def main():
     lines.append("")
     lines.append("CONFLICTS:")
     for c in conflicts:
-        lines.append(
-            f"  {c['storeShort']:16} {c['overlapStart']}—{c['overlapEnd']} | "
-            f"клад {c['kladovshchik']} || СПК {c['spk']}"
-        )
+        if c.get("type") == "same_role":
+            lines.append(
+                f"  SAME {c['roleGroup']:12} {c['storeShort']:16} {c['overlapStart']}—{c['overlapEnd']} | "
+                f"{c['personA']} || {c['personB']}"
+            )
+        else:
+            lines.append(
+                f"  SPK+KLAD {c['storeShort']:16} {c['overlapStart']}—{c['overlapEnd']} | "
+                f"клад {c.get('kladovshchik') or c['personA']} || СПК {c.get('spk') or c['personB']}"
+            )
     summary.write_text("\n".join(lines), encoding="utf-8")
     print(
         "wrote",

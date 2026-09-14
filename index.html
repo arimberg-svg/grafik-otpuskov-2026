@@ -123,7 +123,7 @@
     }
     .stats {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(7, 1fr);
       gap: 1px;
       background: rgba(66, 8, 168, 0.12);
     }
@@ -450,7 +450,7 @@
         <h1>График отпусков магазинов</h1>
         <p>Только действующие сотрудники розницы на 14.09.2026: кассиры, РТЗ, кладовщики, СПК, продавцы-консультанты и менеджеры по работе с клиентами.</p>
         <div class="links">
-          <a href="#b1">1. СПК + кладовщик</a>
+          <a href="#b1">1. Пересечения отпусков</a>
           <a class="ghost" href="#b2">2. Календари магазинов</a>
           <a class="ghost" href="#b3">3. Есть оф, нет неоф</a>
           <a class="ghost" href="#b4">4. Уволенные и новые</a>
@@ -460,29 +460,29 @@
       <div class="body">
         <section class="section danger-block" id="b1">
           <div class="section-head">
-            <h2><span class="num">1</span> СПК и кладовщик одновременно</h2>
-            <p>Нельзя, чтобы СПК и кладовщик одного магазина были в отпуске в одни дни. Такие совпадения выделены красным.</p>
+            <h2><span class="num">1</span> Пересечения отпусков</h2>
+            <p>Нельзя: СПК и кладовщик одновременно, а также двое с одной должностью в одном магазине (кассиры, СПК, ПК и т.д.).</p>
           </div>
-          <p class="note">Для проверки берём даты из файла магазина, если они есть, иначе — официальный график. СПК берём из штатки на 14.09.2026.</p>
+          <p class="note">Для проверки берём даты из файла магазина, если они есть, иначе — официальный график.</p>
           <div id="conflictList"></div>
         </section>
 
         <section class="section" id="b2">
           <div class="section-head">
             <h2><span class="num">2</span> Календарь по магазинам</h2>
-            <p>По каждому сотруднику — полные даты официального и неофициального графиков. На календаре магазина — должности в отпуске, цветом по роли.</p>
+            <p>По каждому сотруднику с неофициальным графиком — даты оф/неоф. Сотрудники только с официальным графиком и новые без дат — на вкладках 3 и 4.</p>
           </div>
           <div class="pills" id="storePills"></div>
           <div class="legend">
             <span><i class="swatch" style="background:var(--off)"></i>официальный (ЗУП)</span>
             <span><i class="swatch" style="background:var(--unoff)"></i>неофициальный (магазин)</span>
-            <span><i class="swatch conflict"></i>СПК + кладовщик в один день</span>
+            <span><i class="swatch conflict"></i>пересечение (СПК+клад или одна должность)</span>
             <span><i class="swatch" style="background:#16a34a"></i>СПК</span>
             <span><i class="swatch" style="background:#2563eb"></i>ПК</span>
             <span><i class="swatch" style="background:#f97316"></i>Кассир</span>
             <span><i class="swatch" style="background:#9333ea"></i>Кладовщик</span>
             <span><i class="swatch" style="background:#eab308"></i>РТЗ</span>
-            <span><i class="swatch" style="background:#0d9488"></i>Менеджер</span>
+            <span><i class="swatch" style="background:#0d9488"></i>МОП</span>
             <span><i class="swatch" style="background:#16a34a"></i>ещё впереди / сейчас</span>
             <span><i class="swatch" style="background:#c4c4c8"></i>уже прошли</span>
           </div>
@@ -531,7 +531,7 @@
       "ПК": "Продавцы-консультанты",
       "Кассир": "Кассиры",
       "РТЗ": "РТЗ",
-      "Менеджер": "Менеджеры по работе с клиентами",
+      "Менеджер": "Менеджеры по работе с клиентами (МОП)",
       "Без должности": "Должность не указана"
     };
     const ROLE_COLOR = {
@@ -540,7 +540,7 @@
       "Кассир": { bg: "#f97316", fg: "#fff", short: "Кас" },
       "Кладовщик": { bg: "#9333ea", fg: "#fff", short: "Клад" },
       "РТЗ": { bg: "#eab308", fg: "#1a1033", short: "РТЗ" },
-      "Менеджер": { bg: "#0d9488", fg: "#fff", short: "Мен" }
+      "Менеджер": { bg: "#0d9488", fg: "#fff", short: "МОП" }
     };
 
     const esc = (s) => String(s ?? "").replace(/[&<>"']/g, m => ({
@@ -567,8 +567,11 @@
       return !p.position && p.storeVacations && p.storeVacations.length;
     }
     const people = D.people.filter(inScope);
+    // В календарях магазинов — только те, у кого есть неоф. график или совпадение/расхождение.
+    // «Только оф» и новые — на отдельных вкладках.
+    const storePeople = people.filter(p => p.status !== "only_official");
     const byStore = {};
-    people.forEach(p => {
+    storePeople.forEach(p => {
       (byStore[p.storeShort] ||= []).push(p);
     });
     const conflictStoreSet = new Set(D.conflictStores || D.conflicts.map(c => c.storeShort));
@@ -616,7 +619,8 @@
       document.getElementById("stats").innerHTML = [
         ["p", s.people, "Действующих в отчёте"],
         ["warn", s.conflictStores ?? new Set(D.conflicts.map(c=>c.storeShort)).size, "Магазинов с нарушением"],
-        ["warn", s.conflicts, "Пересечений СПК+клад"],
+        ["warn", s.conflicts, "Пересечений отпусков"],
+        ["warn", s.sameRoleConflicts ?? "—", "Одна должность вместе"],
         ["p", s.onlyOfficial, "Есть оф, нет неоф"],
         ["ok", s.newHires ?? 0, "Новые без графика"],
         ["warn", s.droppedInactive ?? "—", "Уволенные (нет в штатке)"]
@@ -628,17 +632,29 @@
     function renderConflicts() {
       const el = document.getElementById("conflictList");
       if (!D.conflicts.length) {
-        el.innerHTML = "<p class=\"empty\">Пересечений СПК и кладовщика в магазинах не найдено.</p>";
+        el.innerHTML = "<p class=\"empty\">Пересечений отпусков в магазинах не найдено.</p>";
         return;
       }
       const groups = {};
       D.conflicts.forEach(c => { (groups[c.storeShort] ||= []).push(c); });
-      el.innerHTML = Object.keys(groups).sort().map(store => {
-        const items = groups[store].map(c => `<div class="hit">
-          <div><b>${fmt(c.overlapStart)} — ${fmt(c.overlapEnd)}</b> <span class="meta">${c.days} дн.</span></div>
-          <div>Кладовщик: <b>${esc(c.kladovshchik)}</b> <span class="meta">${esc(c.kladPeriod)}</span></div>
-          <div>${esc(c.spkRole || "СПК")}: <b>${esc(c.spk)}</b> <span class="meta">${esc(c.spkPosition)} · ${esc(c.spkPeriod)}</span></div>
-        </div>`).join("");
+      el.innerHTML = Object.keys(groups).sort((a,b)=>a.localeCompare(b,"ru")).map(store => {
+        const items = groups[store].map(c => {
+          const typeLabel = c.type === "same_role"
+            ? `Одна должность: ${esc(c.roleGroup || "")}`
+            : "СПК + кладовщик";
+          const aName = c.personA || c.kladovshchik;
+          const bName = c.personB || c.spk;
+          const aRole = c.roleA || "Кладовщик";
+          const bRole = c.roleB || c.spkRole || "СПК";
+          const aPeriod = c.periodA || c.kladPeriod;
+          const bPeriod = c.periodB || c.spkPeriod;
+          return `<div class="hit">
+            <div><b>${fmt(c.overlapStart)} — ${fmt(c.overlapEnd)}</b>
+              <span class="meta">${c.days} дн. · ${typeLabel}</span></div>
+            <div>${esc(aRole)}: <b>${esc(aName)}</b> <span class="meta">${esc(c.positionA || "")} · ${esc(aPeriod)}</span></div>
+            <div>${esc(bRole)}: <b>${esc(bName)}</b> <span class="meta">${esc(c.positionB || "")} · ${esc(bPeriod)}</span></div>
+          </div>`;
+        }).join("");
         return `<article class="store-card"><h3>${esc(store)}</h3>${items}</article>`;
       }).join("");
     }
@@ -694,7 +710,10 @@
           const onDay = recs.filter(p => effective(p).some(v => inPeriod(iso, v)));
           const k = klad.some(p => effective(p).some(v => inPeriod(iso, v)));
           const s = sales.some(p => effective(p).some(v => inPeriod(iso, v)));
-          const conflict = k && s;
+          const byRole = {};
+          onDay.forEach(p => { (byRole[p.roleGroup] ||= []).push(p); });
+          const sameRole = Object.values(byRole).some(list => list.length >= 2);
+          const conflict = (k && s) || sameRole;
           const dayState = iso < TODAY ? "past-day" : (iso === TODAY ? "today-day" : "");
           cells += `<div class="day named ${conflict?"conflict":""} ${dayState}">
             <span class="dnum">${d}</span>
@@ -731,7 +750,7 @@
           if (!list.length) return "";
           return `<div class="role-block"><h4>${ROLE_LABEL[role] || role}</h4>${list.map(personCard).join("")}</div>`;
         }).join("");
-        const mark = conflictStoreSet.has(store) ? " · нарушение СПК+клад" : "";
+        const mark = conflictStoreSet.has(store) ? " · есть пересечения отпусков" : "";
         const withVac = recs.filter(p => effective(p).length);
         return `<article class="shop">
           <h3>${esc(store)}</h3>
