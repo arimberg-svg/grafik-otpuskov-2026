@@ -575,6 +575,7 @@
       (byStore[p.storeShort] ||= []).push(p);
     });
     const conflictStoreSet = new Set(D.conflictStores || D.conflicts.map(c => c.storeShort));
+    const STORE_TITLES = D.storeTitles || {};
     const stores = (D.retailStores || Object.keys(byStore))
       .filter(s => byStore[s])
       .sort((a, b) => {
@@ -582,6 +583,9 @@
         const db = conflictStoreSet.has(b) ? 0 : 1;
         return da - db || a.localeCompare(b, "ru");
       });
+    function storeTitle(s) {
+      return STORE_TITLES[s] || s;
+    }
 
     function yearPos(iso) {
       const d = new Date(iso + "T00:00:00");
@@ -755,7 +759,7 @@
       const withVac = recs.filter(p => effective(p).length);
       el.innerHTML = `<article class="shop">
         <h3>${esc(store)}</h3>
-        <div class="meta">${recs.length} чел.${mark}</div>
+        <div class="meta">${esc(storeTitle(store))}${storeTitle(store) !== store ? "" : ""} · ${recs.length} чел.${mark}</div>
         ${ticks}
         ${roles || "<p class='empty'>Нет сотрудников выбранных должностей</p>"}
         <h4 class="overview-title">Календарь магазина на 2026 год</h4>

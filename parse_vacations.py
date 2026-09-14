@@ -201,7 +201,39 @@ MANUAL_STORE_VACATIONS = [
         "note": "магазин №31 Заводоуковск",
         "sourceFile": "ручная правка",
     },
+    {
+        "fio": "Вакарин Никита Николаевич",
+        "storeShort": "Ембаево",
+        "start": "2026-08-01",
+        "end": "2026-08-14",
+        "days": 14,
+        "note": "магазин №27 Ембаево, график СПК",
+        "sourceFile": "ручная правка",
+    },
+    {
+        "fio": "Маляр Сергей Васильевич",
+        "storeShort": "МСК 6 км",
+        "start": "2026-07-01",
+        "end": "2026-07-28",
+        "days": 28,
+        "note": "МСК 6 км, РТЗ",
+        "sourceFile": "ручная правка",
+    },
 ]
+
+STORE_TITLES = {
+    "Ембаево": "Магазин №27/с. Ембаево, улица Бульварная зд. 2А",
+    "Заводоуковск": "Магазин №31/г.Заводоуковск, ул. Черемуховая,23 с.1",
+    "МСК 6 км": "Магазин №15/Московский тракт 6 км, ст2",
+}
+
+# Принудительная должность (если в штатке другая)
+ROLE_OVERRIDES = {
+    "маляр сергей васильевич": {
+        "roleGroup": "РТЗ",
+        "position": "Работник торгового зала",
+    },
+}
 
 
 def canonicalize_fio(fio: str) -> str:
@@ -226,6 +258,16 @@ def apply_store_override(rec: dict) -> None:
     rec["storeShort"] = ov["storeShort"]
     rec["store"] = ov.get("store") or ov["storeShort"]
     rec["isRetail"] = rec["storeShort"] in RETAIL_STORES
+
+
+def apply_role_override(rec: dict) -> None:
+    ov = ROLE_OVERRIDES.get(norm(rec.get("fio") or ""))
+    if not ov:
+        return
+    rec["roleGroup"] = ov["roleGroup"]
+    rec["position"] = ov.get("position") or rec.get("position") or ov["roleGroup"]
+    rec["isRetail"] = rec.get("storeShort") in RETAIL_STORES
+    rec["isReportStaff"] = rec["isRetail"] and rec["roleGroup"] in REPORT_ROLES
 
 
 def apply_manual_store_vacations(people_list: list) -> None:
@@ -255,6 +297,8 @@ def apply_manual_store_vacations(people_list: list) -> None:
                     rec["store"] = STORE_OVERRIDES.get(norm(fio), {}).get("store") or store
         if not rec:
             continue
+        if store in STORE_TITLES:
+            rec["store"] = STORE_TITLES[store]
         # avoid duplicates
         exists = any(v.get("start") == vac["start"] and v.get("end") == vac["end"] for v in rec.get("storeVacations") or [])
         if not exists:
@@ -1117,6 +1161,9 @@ def main():
     apply_manual_store_vacations(people_list)
     for rec in people_list:
         apply_store_override(rec)
+        apply_role_override(rec)
+        if rec.get("storeShort") in STORE_TITLES and not rec.get("store"):
+            rec["store"] = STORE_TITLES[rec["storeShort"]]
         rec["isRetail"] = rec["storeShort"] in RETAIL_STORES
         rec["isReportStaff"] = rec["isRetail"] and rec.get("roleGroup") in REPORT_ROLES
         rec["status"] = status_for(rec.get("official") or [], rec.get("storeVacations") or [])
@@ -1208,6 +1255,7 @@ def main():
         "roleGroups": role_groups,
         "reportRoles": list(REPORT_ROLES),
         "retailStores": sorted(s for s in RETAIL_STORES if any(p["storeShort"] == s for p in active_scheduled)),
+        "storeTitles": STORE_TITLES,
         "conflictStores": conflict_stores,
         "people": [p for p in people_list if not p.get("isNewHire") and not is_excluded(p["fio"])],
         "newHires": new_hires,
