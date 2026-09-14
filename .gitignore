@@ -1,6 +1,7 @@
 *.xlsx
 *.xls
 *.xlsm
+*.mxl
 _inspect.txt
 _meta.txt
 _more.txt

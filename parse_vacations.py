@@ -14,6 +14,7 @@ import xlrd
 ROOT = Path(__file__).resolve().parent
 STORE_DIR = ROOT / "Графики официальные"
 OFFICIAL = ROOT / "график отпусков ЗУП ИП Пафнутьева ЕП. (офиц).xlsx"
+STAFF_FILE = ROOT / "данные о работниках на 14.09.2026.mxl"
 OUT_JS = ROOT / "data.js"
 
 HEADER_SKIP = {
@@ -146,6 +147,8 @@ REPORT_ROLES = ("Кладовщик", "СПК", "ПК", "Кассир", "РТЗ"
 
 def role_group(position: str) -> str:
     p = norm(position)
+    if p == "спк" or p.startswith("спк ") or p.startswith("спк/"):
+        return "СПК"
     if "кладовщик" in p:
         return "Кладовщик"
     if "кассир" in p:
@@ -165,17 +168,92 @@ def role_group(position: str) -> str:
     return position.strip()
 
 
-def is_spk(position: str) -> bool:
-    return role_group(position) == "СПК"
+def is_spk(rec) -> bool:
+    return rec.get("roleGroup") == "СПК" or role_group(rec.get("position") or "") == "СПК"
 
 
-def is_sales_for_conflict(position: str) -> bool:
-    """СПК, а если в ЗУП не выделен — продавец-консультант."""
-    return role_group(position) in {"СПК", "ПК"}
+def is_klad(rec) -> bool:
+    return rec.get("roleGroup") == "Кладовщик" or role_group(rec.get("position") or "") == "Кладовщик"
 
 
-def is_klad(position: str) -> bool:
-    return role_group(position) == "Кладовщик"
+STAFF_SKIP = {
+    "штатная расстановка",
+    "организация",
+    "у михалыча",
+    "дата отчета",
+    "подразделение",
+    "запланировано",
+    "свободно",
+    "учтено",
+    "позиция",
+    "сотрудник, состояние",
+    "язык по умолчанию",
+}
+EMP_CELL_RE = re.compile(
+    r"^([А-ЯЁ][а-яёА-ЯЁ\-]+(?:\s+[А-ЯЁа-яё\-]+){1,4}),\s+(.+)$"
+)
+NUM_CELL_RE = re.compile(r"^-?\d+,\d+$")
+
+
+def parse_staff():
+    """Current employees from 1C staffing MXL as of 14.09.2026."""
+    if not STAFF_FILE.exists():
+        return []
+    raw = STAFF_FILE.read_bytes()
+    start = raw.find(b"{")
+    text = raw[start:].decode("utf-8", errors="replace") if start >= 0 else ""
+    cells = [
+        c.strip().replace("\xa0", " ")
+        for c in re.findall(r'\{\s*"#"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\}', text)
+    ]
+    current_store_raw = ""
+    current_store = ""
+    current_pos = ""
+    rows = []
+    for c in cells:
+        if not c or c in {",", ", "} or NUM_CELL_RE.fullmatch(c) or norm(c) in STAFF_SKIP:
+            continue
+        m = EMP_CELL_RE.match(c)
+        if m:
+            rows.append(
+                {
+                    "fio": re.sub(r"\s+", " ", m.group(1)).strip(),
+                    "status": m.group(2).strip(),
+                    "position": current_pos,
+                    "store": current_store_raw,
+                    "storeShort": current_store,
+                }
+            )
+            continue
+        n = norm(c)
+        if (
+            "магазин" in n
+            or c.startswith("Отдел")
+            or c.startswith("Служба")
+            or c.startswith("АУП")
+            or c.startswith("АХО")
+            or "розничн" in n
+        ):
+            current_store_raw = c
+            current_store = store_short(c)
+            current_pos = ""
+            continue
+        if "сентябр" in n or "дата" in n:
+            continue
+        current_pos = re.sub(r"\s+", " ", c).strip()
+    return rows
+
+
+def attach_staff(rec, staff_dict):
+    hit, _how = match_person(rec["fio"], rec["storeShort"], staff_dict)
+    if not hit:
+        return None
+    hit_store = hit.get("storeShort") or ""
+    rec_store = rec.get("storeShort") or ""
+    if rec_store in RETAIL_STORES or hit_store in RETAIL_STORES:
+        if rec_store != hit_store:
+            return None
+    return hit
 
 
 def parse_date(value, default_year=2026):
@@ -553,8 +631,8 @@ def find_conflicts(people_list):
             by_store[rec["storeShort"]].append(rec)
     conflicts = []
     for store, recs in sorted(by_store.items()):
-        klad = [r for r in recs if is_klad(r["position"])]
-        sales = [r for r in recs if is_sales_for_conflict(r["position"])]
+        klad = [r for r in recs if is_klad(r)]
+        sales = [r for r in recs if is_spk(r)]
         k_periods = [p for r in klad for p in effective_periods(r)]
         s_periods = [p for r in sales for p in effective_periods(r)]
         seen = set()
@@ -572,7 +650,7 @@ def find_conflicts(people_list):
                 if key in seen:
                     continue
                 seen.add(key)
-                sales_role = role_group(sr["position"])
+                sales_role = sr.get("roleGroup") or role_group(sr["position"])
                 conflicts.append(
                     {
                         "storeShort": store,
@@ -654,6 +732,37 @@ def main():
         people_list.append(rec)
     people_list.sort(key=lambda r: (r["storeShort"], r["roleGroup"], r["fio"]))
 
+    staff_rows = parse_staff()
+    staff_dict = {}
+    for s in staff_rows:
+        key = (norm(s["fio"]), s["storeShort"])
+        staff_dict[key] = {
+            "fio": s["fio"],
+            "storeShort": s["storeShort"],
+            "position": s["position"],
+            "status": s["status"],
+            "store": s["store"],
+        }
+
+    dropped_inactive = []
+    active_list = []
+    for rec in people_list:
+        hit = attach_staff(rec, staff_dict)
+        if not hit:
+            dropped_inactive.append(rec)
+            continue
+        rec["active"] = True
+        rec["staffStatus"] = hit.get("status") or ""
+        staff_role = role_group(hit.get("position") or "")
+        if staff_role in REPORT_ROLES:
+            rec["roleGroup"] = staff_role
+            rec["position"] = hit.get("position") or rec["position"]
+        rec["isRetail"] = rec["storeShort"] in RETAIL_STORES
+        rec["isReportStaff"] = rec["isRetail"] and rec["roleGroup"] in REPORT_ROLES
+        active_list.append(rec)
+    people_list = active_list
+    people_list.sort(key=lambda r: (r["storeShort"], r["roleGroup"], r["fio"]))
+
     report_people = [
         p
         for p in people_list
@@ -672,6 +781,9 @@ def main():
         "year": 2026,
         "stats": {
             "people": len(report_people),
+            "staffAsOf": "2026-09-14",
+            "staffTotal": len(staff_rows),
+            "droppedInactive": len(dropped_inactive),
             "officialRows": sum(len(p["official"]) for p in report_people),
             "storeRows": sum(len(p["storeVacations"]) for p in report_people),
             "matchedStoreRows": matched_n,
@@ -699,6 +811,8 @@ def main():
     summary = ROOT / "_parse_stats.txt"
     lines = [
         f"people={payload['stats']['people']}",
+        f"staffTotal={payload['stats']['staffTotal']}",
+        f"droppedInactive={payload['stats']['droppedInactive']}",
         f"officialPeriods={payload['stats']['officialRows']}",
         f"storePeriods={payload['stats']['storeRows']}",
         f"matchedStoreRows={matched_n}",
@@ -707,8 +821,12 @@ def main():
         f"conflictStores={payload['stats']['conflictStores']}",
         f"status match={payload['stats']['match']} differ={payload['stats']['differ']} onlyOfficial={payload['stats']['onlyOfficial']} onlyStore={payload['stats']['onlyStore']}",
         "",
-        "UNMATCHED:",
+        "DROPPED INACTIVE:",
     ]
+    for rec in dropped_inactive:
+        lines.append(f"  {rec['storeShort']:16} | {rec['fio']:40} | {rec.get('position','')}")
+    lines.append("")
+    lines.append("UNMATCHED:")
     for v in unmatched:
         lines.append(f"  {v['storeShort']:16} | {v['fio']:40} | {v['start']} {v['days']}д | {v['sourceFile']}")
     lines.append("")
