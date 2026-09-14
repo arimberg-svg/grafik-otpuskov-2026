@@ -324,6 +324,12 @@
       opacity: .92;
       font-weight: 800;
     }
+    .rtag .rname {
+      display: block;
+      font-size: 10px;
+      line-height: 1.15;
+      font-weight: 800;
+    }
     .rtag.past {
       background: #c4c4c8 !important;
       color: #5a5a5e !important;
@@ -386,7 +392,7 @@
       color: var(--muted);
       font-weight: 650;
       background: #fff;
-      box-shadow: inset 0 0 0 1px dashed rgba(66, 8, 168, 0.28);
+      box-shadow: inset 0 0 0 1px rgba(66, 8, 168, 0.28);
       border-radius: 6px;
     }
     .badge-warn {
@@ -510,6 +516,11 @@
   </div>
   <script src="data.js"></script>
   <script>
+    // Guard: without data.js the page stays blank
+    if (!window.VACATION_DATA) {
+      document.body.insertAdjacentHTML("afterbegin",
+        "<p style='padding:24px;font:600 16px Manrope,sans-serif;color:#9b1530'>Не загрузился data.js. Откройте страницу через GitHub Pages или локальный сервер рядом с data.js.</p>");
+    } else {
     const D = window.VACATION_DATA;
     const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
     const MONTH_SHORT = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
@@ -647,10 +658,10 @@
       }).join("");
     }
 
-    let currentStore = "all";
+    let currentStore = stores[0] || "all";
     function renderPills() {
       const wrap = document.getElementById("storePills");
-      const all = `<button data-store="all" class="${currentStore==="all"?"active":""}">Все магазины</button>`;
+      const all = `<button data-store="all" class="${currentStore==="all"?"active":""}">Все магазины (кратко)</button>`;
       wrap.innerHTML = all + stores.map(s => {
         const bad = conflictStoreSet.has(s) ? "has-bad" : "";
         const n = (byStore[s] || []).length;
@@ -731,7 +742,8 @@
       const el = document.getElementById("storesView");
       const show = currentStore === "all" ? stores : [currentStore];
       const ticks = `<div class="months"><b></b><span>${MONTH_SHORT.map(m=>`<i>${m}</i>`).join("")}</span></div>`;
-      el.innerHTML = show.map(store => {
+      const showCal = currentStore !== "all";
+      el.innerHTML = (showCal ? "" : `<p class="note">Выберите магазин выше, чтобы открыть полный календарь года. Здесь — краткий список по всем магазинам.</p>`) + show.map(store => {
         const recs = byStore[store] || [];
         const roles = [...ROLE_ORDER, "Без должности"].map(role => {
           const list = recs.filter(p => (p.roleGroup || "Без должности") === role);
@@ -740,13 +752,16 @@
         }).join("");
         const mark = conflictStoreSet.has(store) ? " · есть пересечения отпусков" : "";
         const withVac = recs.filter(p => effective(p).length);
+        const cal = showCal
+          ? `<h4 class="overview-title">Календарь магазина на 2026 год</h4>
+          <div class="cal overview">${calendarHtml(withVac)}</div>`
+          : `<div class="meta" style="margin-top:8px">В отпуске по календарю: ${withVac.length} чел. · откройте магазин для календаря</div>`;
         return `<article class="shop">
           <h3>${esc(store)}</h3>
           <div class="meta">${recs.length} чел.${mark}</div>
           ${ticks}
           ${roles || "<p class='empty'>Нет сотрудников выбранных должностей</p>"}
-          <h4 class="overview-title">Календарь магазина на 2026 год</h4>
-          <div class="cal overview">${calendarHtml(withVac)}</div>
+          ${cal}
         </article>`;
       }).join("");
     }
@@ -838,6 +853,7 @@
     renderStores();
     renderMismatch();
     renderStaffChanges();
+    } // end VACATION_DATA guard
   </script>
 </body>
 </html>
