@@ -37,7 +37,7 @@ RETAIL_STORES = {
     "МСК 120А",
     "Бабарынка",
     "Сантехника",
-    "Ожогино",
+    "Ожогина",
     "Червишево",
     "Антипино",
     "Березняки",
@@ -54,6 +54,7 @@ RETAIL_STORES = {
     "Мальково",
     "Щорса",
     "Ембаево",
+    "Заводоуковск",
 }
 
 STORE_SHORT = [
@@ -64,7 +65,7 @@ STORE_SHORT = [
     ("московскийтракт 120", "МСК 120А"),
     ("московский тракт 120", "МСК 120А"),
     ("бабарынка", "Бабарынка"),
-    ("ожогин", "Ожогино"),
+    ("ожогин", "Ожогина"),
     ("червишево", "Червишево"),
     ("старый тобольский", "Антипино"),
     ("березняков", "Березняки"),
@@ -81,6 +82,8 @@ STORE_SHORT = [
     ("мальково", "Мальково"),
     ("щорса", "Щорса"),
     ("ембаево", "Ембаево"),
+    ("заводоуковск", "Заводоуковск"),
+    ("черемухов", "Заводоуковск"),
     ("складской и транспортной", "РЦ / логистика"),
     ("отдел закупок", "Закупки"),
     ("корпоративных продаж", "B2B"),
@@ -111,10 +114,12 @@ FILE_STORE = [
     ("перевалово", "Перевалово"),
     ("успенка", "Успенка"),
     ("дружба", "Дружба"),
-    ("ожогино", "Ожогино"),
+    ("ожогино", "Ожогина"),
+    ("ожогина", "Ожогина"),
     ("тюнево", "Тюнево"),
     ("сантехника", "Сантехника"),
     ("чайка", "Чайка"),
+    ("заводоуковск", "Заводоуковск"),
 ]
 
 
@@ -168,6 +173,36 @@ EXCLUDE_FROM_REPORT = {
     "перевалов леонид геннадьевич",
 }
 
+# Переводы / ручные правки магазина
+STORE_OVERRIDES = {
+    "кондратьева ирина владимировна": {
+        "storeShort": "Заводоуковск",
+        "store": "Магазин №31/г.Заводоуковск, ул. Черемуховая,23 с.1",
+    },
+}
+
+# Отпуска, которых нет в файле магазина (перевод и т.п.)
+MANUAL_STORE_VACATIONS = [
+    {
+        "fio": "Катрич Константин Дмитриевич",
+        "storeShort": "Бабарынка",
+        "start": "2026-09-14",
+        "end": "2026-09-27",
+        "days": 14,
+        "note": "перевод в Бабарынку, даты по факту",
+        "sourceFile": "ручная правка",
+    },
+    {
+        "fio": "Кондратьева Ирина Владимировна",
+        "storeShort": "Заводоуковск",
+        "start": "2026-10-15",
+        "end": "2026-10-28",
+        "days": 14,
+        "note": "магазин №31 Заводоуковск",
+        "sourceFile": "ручная правка",
+    },
+]
+
 
 def canonicalize_fio(fio: str) -> str:
     key = norm(fio)
@@ -182,6 +217,53 @@ def canonicalize_fio(fio: str) -> str:
 
 def is_excluded(fio: str) -> bool:
     return norm(fio) in EXCLUDE_FROM_REPORT
+
+
+def apply_store_override(rec: dict) -> None:
+    ov = STORE_OVERRIDES.get(norm(rec.get("fio") or ""))
+    if not ov:
+        return
+    rec["storeShort"] = ov["storeShort"]
+    rec["store"] = ov.get("store") or ov["storeShort"]
+    rec["isRetail"] = rec["storeShort"] in RETAIL_STORES
+
+
+def apply_manual_store_vacations(people_list: list) -> None:
+    by_key = {(norm(p["fio"]), p["storeShort"]): p for p in people_list}
+    by_fio = defaultdict(list)
+    for p in people_list:
+        by_fio[norm(p["fio"])].append(p)
+    for item in MANUAL_STORE_VACATIONS:
+        fio = canonicalize_fio(item["fio"])
+        store = item["storeShort"]
+        vac = {
+            "start": item["start"],
+            "end": item["end"],
+            "days": item["days"],
+            "note": item.get("note") or "",
+            "sourceFile": item.get("sourceFile") or "ручная правка",
+        }
+        rec = by_key.get((norm(fio), store))
+        if not rec:
+            # same person maybe still on old store name
+            cands = by_fio.get(norm(fio), [])
+            rec = next((p for p in cands if p["storeShort"] == store), None)
+            if not rec and len(cands) == 1:
+                rec = cands[0]
+                rec["storeShort"] = store
+                if store == "Заводоуковск":
+                    rec["store"] = STORE_OVERRIDES.get(norm(fio), {}).get("store") or store
+        if not rec:
+            continue
+        # avoid duplicates
+        exists = any(v.get("start") == vac["start"] and v.get("end") == vac["end"] for v in rec.get("storeVacations") or [])
+        if not exists:
+            rec.setdefault("storeVacations", []).append(vac)
+            rec["storeVacations"].sort(key=lambda x: x["start"] or "")
+        rec["status"] = status_for(rec.get("official") or [], rec.get("storeVacations") or [])
+        rec["isRetail"] = rec["storeShort"] in RETAIL_STORES
+        if rec.get("roleGroup") in REPORT_ROLES:
+            rec["isReportStaff"] = rec["isRetail"]
 
 
 def role_group(position: str) -> str:
@@ -946,6 +1028,7 @@ def main():
 
     people_list = []
     for rec in people.values():
+        apply_store_override(rec)
         rec["roleGroup"] = role_group(rec["position"])
         rec["isRetail"] = rec["storeShort"] in RETAIL_STORES
         rec["isReportStaff"] = rec["isRetail"] and rec["roleGroup"] in REPORT_ROLES
@@ -958,6 +1041,7 @@ def main():
     staff_rows = parse_staff()
     for s in staff_rows:
         s["fio"] = canonicalize_fio(s["fio"])
+        apply_store_override(s)
     staff_dict = {}
     for s in staff_rows:
         key = (norm(s["fio"]), s["storeShort"])
@@ -1030,6 +1114,12 @@ def main():
         active_keys.add(key)
 
     people_list = active_list
+    apply_manual_store_vacations(people_list)
+    for rec in people_list:
+        apply_store_override(rec)
+        rec["isRetail"] = rec["storeShort"] in RETAIL_STORES
+        rec["isReportStaff"] = rec["isRetail"] and rec.get("roleGroup") in REPORT_ROLES
+        rec["status"] = status_for(rec.get("official") or [], rec.get("storeVacations") or [])
     people_list.sort(key=lambda r: (r["storeShort"], r["roleGroup"], r["fio"]))
 
     report_people = [

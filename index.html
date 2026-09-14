@@ -658,11 +658,10 @@
       }).join("");
     }
 
-    let currentStore = stores[0] || "all";
+    let currentStore = stores[0] || "";
     function renderPills() {
       const wrap = document.getElementById("storePills");
-      const all = `<button data-store="all" class="${currentStore==="all"?"active":""}">Все магазины (кратко)</button>`;
-      wrap.innerHTML = all + stores.map(s => {
+      wrap.innerHTML = stores.map(s => {
         const bad = conflictStoreSet.has(s) ? "has-bad" : "";
         const n = (byStore[s] || []).length;
         return `<button data-store="${esc(s)}" class="${bad} ${currentStore===s?"active":""}">${esc(s)} (${n})</button>`;
@@ -740,30 +739,28 @@
 
     function renderStores() {
       const el = document.getElementById("storesView");
-      const show = currentStore === "all" ? stores : [currentStore];
+      if (!currentStore) {
+        el.innerHTML = "<p class='empty'>Нет магазинов для отображения</p>";
+        return;
+      }
+      const store = currentStore;
       const ticks = `<div class="months"><b></b><span>${MONTH_SHORT.map(m=>`<i>${m}</i>`).join("")}</span></div>`;
-      const showCal = currentStore !== "all";
-      el.innerHTML = (showCal ? "" : `<p class="note">Выберите магазин выше, чтобы открыть полный календарь года. Здесь — краткий список по всем магазинам.</p>`) + show.map(store => {
-        const recs = byStore[store] || [];
-        const roles = [...ROLE_ORDER, "Без должности"].map(role => {
-          const list = recs.filter(p => (p.roleGroup || "Без должности") === role);
-          if (!list.length) return "";
-          return `<div class="role-block"><h4>${ROLE_LABEL[role] || role}</h4>${list.map(personCard).join("")}</div>`;
-        }).join("");
-        const mark = conflictStoreSet.has(store) ? " · есть пересечения отпусков" : "";
-        const withVac = recs.filter(p => effective(p).length);
-        const cal = showCal
-          ? `<h4 class="overview-title">Календарь магазина на 2026 год</h4>
-          <div class="cal overview">${calendarHtml(withVac)}</div>`
-          : `<div class="meta" style="margin-top:8px">В отпуске по календарю: ${withVac.length} чел. · откройте магазин для календаря</div>`;
-        return `<article class="shop">
-          <h3>${esc(store)}</h3>
-          <div class="meta">${recs.length} чел.${mark}</div>
-          ${ticks}
-          ${roles || "<p class='empty'>Нет сотрудников выбранных должностей</p>"}
-          ${cal}
-        </article>`;
+      const recs = byStore[store] || [];
+      const roles = [...ROLE_ORDER, "Без должности"].map(role => {
+        const list = recs.filter(p => (p.roleGroup || "Без должности") === role);
+        if (!list.length) return "";
+        return `<div class="role-block"><h4>${ROLE_LABEL[role] || role}</h4>${list.map(personCard).join("")}</div>`;
       }).join("");
+      const mark = conflictStoreSet.has(store) ? " · есть пересечения отпусков" : "";
+      const withVac = recs.filter(p => effective(p).length);
+      el.innerHTML = `<article class="shop">
+        <h3>${esc(store)}</h3>
+        <div class="meta">${recs.length} чел.${mark}</div>
+        ${ticks}
+        ${roles || "<p class='empty'>Нет сотрудников выбранных должностей</p>"}
+        <h4 class="overview-title">Календарь магазина на 2026 год</h4>
+        <div class="cal overview">${calendarHtml(withVac)}</div>
+      </article>`;
     }
 
     function personRow(p) {
