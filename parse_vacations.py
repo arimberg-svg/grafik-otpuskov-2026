@@ -152,6 +152,20 @@ FIO_CANONICAL = {
     "белоногов юв": "Белоногов Юрий Владимирович",
     "белоногов ю в": "Белоногов Юрий Владимирович",
     "григорьева мария ивановна": "Узкоглазова Мария Ивановна",
+    "мостовских василий": "Мостовских Василий Васильевич",
+    "диденко любовь валерьевна": "Диденко Любовь Валериевна",
+    "бастриков александр": "Бастриков Александр Витальевич",
+    "серебреникова ксения вячеславовна": "Юрлова Ксения Вячеславовна",
+    "серебренникова ксения вячеславовна": "Юрлова Ксения Вячеславовна",
+}
+
+# Не показывать в отчёте (ошибки / не включать)
+EXCLUDE_FROM_REPORT = {
+    "ситникова полина андреевна",
+    "харитонова наталья вячеславовна",
+    "курбатов николай андреевич",
+    "бердышева лейла агиловна",
+    "перевалов леонид геннадьевич",
 }
 
 
@@ -164,6 +178,10 @@ def canonicalize_fio(fio: str) -> str:
     if compact in FIO_CANONICAL:
         return FIO_CANONICAL[compact]
     return re.sub(r"\s+", " ", (fio or "")).strip()
+
+
+def is_excluded(fio: str) -> bool:
+    return norm(fio) in EXCLUDE_FROM_REPORT
 
 
 def role_group(position: str) -> str:
@@ -954,6 +972,8 @@ def main():
     dropped_inactive = []
     active_list = []
     for rec in people_list:
+        if is_excluded(rec["fio"]):
+            continue
         hit = attach_staff(rec, staff_dict)
         if not hit:
             dropped_inactive.append(rec)
@@ -969,6 +989,8 @@ def main():
         active_list.append(rec)
     active_keys = {(norm(p["fio"]), p["storeShort"]) for p in active_list}
     for s in staff_rows:
+        if is_excluded(s["fio"]):
+            continue
         if s["storeShort"] not in RETAIL_STORES:
             continue
         staff_role = role_group(s.get("position") or "")
@@ -1054,20 +1076,7 @@ def main():
         )
     )
 
-    dismissed = []
-    for rec in dropped_inactive:
-        rg = rec.get("roleGroup") or role_group(rec.get("position") or "")
-        if rec["storeShort"] not in RETAIL_STORES or rg not in REPORT_ROLES:
-            continue
-        dismissed.append(
-            {
-                "fio": rec["fio"],
-                "position": rec.get("position") or rg,
-                "storeShort": rec["storeShort"],
-                "roleGroup": rg,
-            }
-        )
-    dismissed.sort(key=lambda r: (r["storeShort"], r["roleGroup"], r["fio"]))
+    dismissed = []  # блок «уволенные» больше не публикуем
 
     conflicts = find_conflicts([p for p in report_people if not p.get("isNewHire")])
     conflict_stores = sorted({c["storeShort"] for c in conflicts})
@@ -1086,7 +1095,7 @@ def main():
             "people": len(active_scheduled),
             "staffAsOf": "2026-09-14",
             "staffTotal": len(staff_rows),
-            "droppedInactive": len(dismissed),
+            "droppedInactive": len(dropped_inactive),
             "officialRows": sum(len(p["official"]) for p in active_scheduled),
             "storeRows": sum(len(p["storeVacations"]) for p in active_scheduled),
             "matchedStoreRows": matched_n,
@@ -1110,9 +1119,9 @@ def main():
         "reportRoles": list(REPORT_ROLES),
         "retailStores": sorted(s for s in RETAIL_STORES if any(p["storeShort"] == s for p in active_scheduled)),
         "conflictStores": conflict_stores,
-        "people": [p for p in people_list if not p.get("isNewHire")],
+        "people": [p for p in people_list if not p.get("isNewHire") and not is_excluded(p["fio"])],
         "newHires": new_hires,
-        "dismissed": dismissed,
+        "dismissed": [],
         "conflicts": conflicts,
     }
     OUT_JS.write_text(

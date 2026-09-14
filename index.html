@@ -123,7 +123,7 @@
     }
     .stats {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 1px;
       background: rgba(66, 8, 168, 0.12);
     }
@@ -453,7 +453,7 @@
           <a href="#b1">1. Пересечения отпусков</a>
           <a class="ghost" href="#b2">2. Календари магазинов</a>
           <a class="ghost" href="#b3">3. Есть оф, нет неоф</a>
-          <a class="ghost" href="#b4">4. Уволенные и новые</a>
+          <a class="ghost" href="#b4">4. Новые без графика</a>
         </div>
       </header>
       <div class="stats" id="stats"></div>
@@ -499,21 +499,10 @@
 
         <section class="section" id="b4">
           <div class="section-head">
-            <h2><span class="num">4</span> Уволенные и новые без графика</h2>
-            <p>Отдельно от графиков: кто уже не в штатке на 14.09.2026, и кто в штатке есть, но без дат отпуска.</p>
+            <h2><span class="num">4</span> Новые без графика</h2>
+            <p>Есть в штатке на 14.09.2026, но нет дат ни в ЗУП, ни в файлах магазинов. Дата приёма — из файла «даты приема»; плановый отпуск = +6 месяцев. Если плановая дата попадает на 15.04–15.08 — подсветка внимания.</p>
           </div>
-          <div class="split staff-split">
-            <div class="col off-only">
-              <h3>Уволенные <span class="meta" id="dismissedCount"></span></h3>
-              <p class="meta" style="margin:0 0 10px">Были в графиках, но нет в штатке на 14.09.2026</p>
-              <div id="dismissedList"></div>
-            </div>
-            <div class="col store-only">
-              <h3>Новые без графика <span class="meta" id="newHiresCount"></span></h3>
-              <p class="meta" style="margin:0 0 10px">Есть в штатке, нет ни в ЗУП, ни в файлах магазинов. Дата приёма — из файла «даты приема»; плановый отпуск = +6 месяцев. Если плановая дата попадает на 15.04–15.08 — подсветка внимания.</p>
-              <div id="newHires"></div>
-            </div>
-          </div>
+          <div class="new-block" id="newHires"></div>
         </section>
         <footer id="foot"></footer>
       </div>
@@ -622,8 +611,7 @@
         ["warn", s.conflicts, "Пересечений отпусков"],
         ["warn", s.sameRoleConflicts ?? "—", "Одна должность вместе"],
         ["p", s.onlyOfficial, "Есть оф, нет неоф"],
-        ["ok", s.newHires ?? 0, "Новые без графика"],
-        ["warn", s.droppedInactive ?? "—", "Уволенные (нет в штатке)"]
+        ["ok", s.newHires ?? 0, "Новые без графика"]
       ].map(([cls, n, label]) => `<article class="${cls}"><b>${n}</b><span>${label}</span></article>`).join("");
       document.getElementById("foot").textContent =
         `Сеть «У Михалыча» · штатка на ${s.staffAsOf || "14.09.2026"} · в отчёте ${s.people} действующих сотрудников · оф. периодов ${s.officialRows}, из магазинов ${s.storeRows}`;
@@ -826,20 +814,22 @@
     }
 
     function renderStaffChanges() {
-      const dismissed = (D.dismissed || []).slice().sort((a, b) =>
-        a.storeShort.localeCompare(b.storeShort, "ru") || a.fio.localeCompare(b.fio, "ru")
-      );
       const news = (D.newHires || []).slice().sort((a, b) =>
         (a.summerAttention === b.summerAttention ? 0 : a.summerAttention ? -1 : 1) ||
         a.storeShort.localeCompare(b.storeShort, "ru") || a.fio.localeCompare(b.fio, "ru")
       );
       const withDate = news.filter(p => p.hireDate).length;
       const summer = news.filter(p => p.summerAttention).length;
-      document.getElementById("dismissedCount").textContent = `(${dismissed.length})`;
-      document.getElementById("newHiresCount").textContent =
-        `(${news.length}, дат приёма ${withDate}${summer ? `, внимание ${summer}` : ""})`;
-      document.getElementById("dismissedList").innerHTML = simpleTable(dismissed);
-      document.getElementById("newHires").innerHTML = newHiresTable(news);
+      const el = document.getElementById("newHires");
+      const head = document.createElement("div");
+      head.className = "meta";
+      head.style.marginBottom = "10px";
+      head.textContent = `Всего ${news.length}` +
+        (withDate ? `, дат приёма ${withDate}` : "") +
+        (summer ? `, внимание к сезону ${summer}` : "");
+      el.innerHTML = "";
+      el.appendChild(head);
+      el.insertAdjacentHTML("beforeend", newHiresTable(news));
     }
 
     renderStats();
