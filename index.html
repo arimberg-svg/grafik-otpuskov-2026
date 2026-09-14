@@ -123,7 +123,7 @@
     }
     .stats {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 1px;
       background: rgba(66, 8, 168, 0.12);
     }
@@ -458,8 +458,7 @@
         <div class="links">
           <a href="#b1">1. Пересечения отпусков</a>
           <a class="ghost" href="#b2">2. Календари магазинов</a>
-          <a class="ghost" href="#b3">3. Есть оф, нет неоф</a>
-          <a class="ghost" href="#b4">4. Новые без графика</a>
+          <a class="ghost" href="#b3">3. Новые без графика</a>
         </div>
       </header>
       <div class="stats" id="stats"></div>
@@ -476,7 +475,6 @@
         <section class="section" id="b2">
           <div class="section-head">
             <h2><span class="num">2</span> Календарь по магазинам</h2>
-            <p>По каждому сотруднику с неофициальным графиком — даты оф/неоф. Сотрудники только с официальным графиком и новые без дат — на вкладках 3 и 4.</p>
           </div>
           <div class="pills" id="storePills"></div>
           <div class="legend">
@@ -497,15 +495,7 @@
 
         <section class="section" id="b3">
           <div class="section-head">
-            <h2><span class="num">3</span> Есть официальный, нет неофициального</h2>
-            <p>Действующие сотрудники, у кого отпуск есть в ЗУП, но нет в файле магазина.</p>
-          </div>
-          <div class="list-block" id="onlyOff"></div>
-        </section>
-
-        <section class="section" id="b4">
-          <div class="section-head">
-            <h2><span class="num">4</span> Новые без графика</h2>
+            <h2><span class="num">3</span> Новые без графика</h2>
             <p>Есть в штатке на 14.09.2026, но нет дат ни в ЗУП, ни в файлах магазинов. Дата приёма — из файла «даты приема»; плановый отпуск = +6 месяцев. Если плановая дата попадает на 15.04–15.08 — подсветка внимания.</p>
           </div>
           <div class="new-block" id="newHires"></div>
@@ -625,7 +615,6 @@
         ["warn", s.conflictStores ?? new Set(D.conflicts.map(c=>c.storeShort)).size, "Магазинов с нарушением"],
         ["warn", s.conflicts, "Пересечений отпусков"],
         ["warn", s.sameRoleConflicts ?? "—", "Одна должность вместе"],
-        ["p", s.onlyOfficial, "Есть оф, нет неоф"],
         ["ok", s.newHires ?? 0, "Новые без графика"]
       ].map(([cls, n, label]) => `<article class="${cls}"><b>${n}</b><span>${label}</span></article>`).join("");
       document.getElementById("foot").textContent =
@@ -824,11 +813,6 @@
         <tbody>${list.map(newHireRow).join("")}</tbody>
       </table></div>`;
     }
-    function renderMismatch() {
-      const off = people.filter(p => p.status === "only_official").sort((a,b)=>a.storeShort.localeCompare(b.storeShort,"ru") || a.fio.localeCompare(b.fio,"ru"));
-      document.getElementById("onlyOff").innerHTML = table(off);
-    }
-
     function renderStaffChanges() {
       const news = (D.newHires || []).slice().sort((a, b) =>
         (a.summerAttention === b.summerAttention ? 0 : a.summerAttention ? -1 : 1) ||
@@ -852,7 +836,6 @@
     renderConflicts();
     renderPills();
     renderStores();
-    renderMismatch();
     renderStaffChanges();
     } // end VACATION_DATA guard
   </script>
