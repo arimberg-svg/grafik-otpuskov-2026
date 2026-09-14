@@ -360,6 +360,9 @@
       font-family: var(--display);
       font-size: 17px;
     }
+    .staff-split { align-items: start; }
+    .staff-split .col h3 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .staff-split table { font-size: 13px; }
     .list-block {
       background: var(--bad-bg);
       border: 1px solid var(--bad-line);
@@ -408,7 +411,7 @@
           <a href="#b1">1. СПК + кладовщик</a>
           <a class="ghost" href="#b2">2. Календари магазинов</a>
           <a class="ghost" href="#b3">3. Есть оф, нет неоф</a>
-          <a class="ghost" href="#b4">4. Новые сотрудники</a>
+          <a class="ghost" href="#b4">4. Уволенные и новые</a>
         </div>
       </header>
       <div class="stats" id="stats"></div>
@@ -451,10 +454,21 @@
 
         <section class="section" id="b4">
           <div class="section-head">
-            <h2><span class="num">4</span> Новые сотрудники без графика</h2>
-            <p>Действующие сотрудники из штатки на 14.09.2026, которых нет ни в официальном графике ЗУП, ни в файлах магазинов. Дату приёма и отпуск можно будет добавить позже.</p>
+            <h2><span class="num">4</span> Уволенные и новые без графика</h2>
+            <p>Отдельно от графиков: кто уже не в штатке на 14.09.2026, и кто в штатке есть, но без дат отпуска.</p>
           </div>
-          <div class="new-block" id="newHires"></div>
+          <div class="split staff-split">
+            <div class="col off-only">
+              <h3>Уволенные <span class="meta" id="dismissedCount"></span></h3>
+              <p class="meta" style="margin:0 0 10px">Были в графиках, но нет в штатке на 14.09.2026</p>
+              <div id="dismissedList"></div>
+            </div>
+            <div class="col store-only">
+              <h3>Новые без графика <span class="meta" id="newHiresCount"></span></h3>
+              <p class="meta" style="margin:0 0 10px">Есть в штатке, нет ни в ЗУП, ни в файлах магазинов</p>
+              <div id="newHires"></div>
+            </div>
+          </div>
         </section>
         <footer id="foot"></footer>
       </div>
@@ -502,14 +516,12 @@
     }
     function inScope(p) {
       if (!p.isRetail) return false;
-      if (p.isNewHire) return true;
       if (p.isReportStaff) return true;
       return !p.position && p.storeVacations && p.storeVacations.length;
     }
     const people = D.people.filter(inScope);
-    const schedulePeople = people.filter(p => !p.isNewHire);
     const byStore = {};
-    schedulePeople.forEach(p => {
+    people.forEach(p => {
       (byStore[p.storeShort] ||= []).push(p);
     });
     const conflictStoreSet = new Set(D.conflictStores || D.conflicts.map(c => c.storeShort));
@@ -560,7 +572,7 @@
         ["warn", s.conflicts, "Пересечений СПК+клад"],
         ["p", s.onlyOfficial, "Есть оф, нет неоф"],
         ["ok", s.newHires ?? 0, "Новые без графика"],
-        ["ok", s.droppedInactive ?? "—", "Убраны (уже не работают)"]
+        ["warn", s.droppedInactive ?? "—", "Уволенные (нет в штатке)"]
       ].map(([cls, n, label]) => `<article class="${cls}"><b>${n}</b><span>${label}</span></article>`).join("");
       document.getElementById("foot").textContent =
         `Сеть «У Михалыча» · штатка на ${s.staffAsOf || "14.09.2026"} · в отчёте ${s.people} действующих сотрудников · оф. периодов ${s.officialRows}, из магазинов ${s.storeRows}`;
@@ -692,43 +704,36 @@
         <tbody>${list.map(personRow).join("")}</tbody>
       </table></div>`;
     }
+    function simplePersonRow(p) {
+      return `<tr>
+        <td>${esc(p.fio)}</td>
+        <td>${esc(p.position || p.roleGroup || "—")}</td>
+        <td>${esc(p.storeShort)}</td>
+      </tr>`;
+    }
+    function simpleTable(list) {
+      if (!list.length) return "<p class='empty'>Нет таких сотрудников</p>";
+      return `<div style="overflow:auto"><table>
+        <thead><tr><th>ФИО</th><th>Должность</th><th>Магазин</th></tr></thead>
+        <tbody>${list.map(simplePersonRow).join("")}</tbody>
+      </table></div>`;
+    }
     function renderMismatch() {
       const off = people.filter(p => p.status === "only_official").sort((a,b)=>a.storeShort.localeCompare(b.storeShort,"ru") || a.fio.localeCompare(b.fio,"ru"));
       document.getElementById("onlyOff").innerHTML = table(off);
     }
 
-    function newHireRow(p) {
-      const rc = ROLE_COLOR[p.roleGroup] || { bg: "#94a3b8", fg: "#fff", short: p.roleGroup || "?" };
-      return `<tr>
-        <td>${esc(p.fio)}</td>
-        <td><span class="rtag" style="display:inline-block;background:${rc.bg};color:${rc.fg};font-size:11px;padding:2px 6px">${esc(rc.short)}</span> ${esc(p.position || p.roleGroup || "—")}</td>
-        <td class="empty">—</td>
-        <td class="empty">—</td>
-      </tr>`;
-    }
-    function renderNewHires() {
-      const list = people.filter(p => p.isNewHire).sort((a, b) =>
-        a.storeShort.localeCompare(b.storeShort, "ru") ||
-        (ROLE_ORDER.indexOf(a.roleGroup) - ROLE_ORDER.indexOf(b.roleGroup)) ||
-        a.fio.localeCompare(b.fio, "ru")
+    function renderStaffChanges() {
+      const dismissed = (D.dismissed || []).slice().sort((a, b) =>
+        a.storeShort.localeCompare(b.storeShort, "ru") || a.fio.localeCompare(b.fio, "ru")
       );
-      const el = document.getElementById("newHires");
-      if (!list.length) {
-        el.innerHTML = "<p class=\"empty\">Все действующие сотрудники уже есть в графиках.</p>";
-        return;
-      }
-      const groups = {};
-      list.forEach(p => { (groups[p.storeShort] ||= []).push(p); });
-      el.innerHTML = Object.keys(groups).sort((a, b) => a.localeCompare(b, "ru")).map(store => {
-        const rows = groups[store].map(newHireRow).join("");
-        return `<div class="store-group">
-          <h3>${esc(store)} <span class="meta">(${groups[store].length})</span></h3>
-          <div style="overflow:auto"><table>
-            <thead><tr><th>Сотрудник</th><th>Должность</th><th>Дата приёма</th><th>Отпуск</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table></div>
-        </div>`;
-      }).join("");
+      const news = (D.newHires || []).slice().sort((a, b) =>
+        a.storeShort.localeCompare(b.storeShort, "ru") || a.fio.localeCompare(b.fio, "ru")
+      );
+      document.getElementById("dismissedCount").textContent = `(${dismissed.length})`;
+      document.getElementById("newHiresCount").textContent = `(${news.length})`;
+      document.getElementById("dismissedList").innerHTML = simpleTable(dismissed);
+      document.getElementById("newHires").innerHTML = simpleTable(news);
     }
 
     renderStats();
@@ -736,7 +741,7 @@
     renderPills();
     renderStores();
     renderMismatch();
-    renderNewHires();
+    renderStaffChanges();
   </script>
 </body>
 </html>

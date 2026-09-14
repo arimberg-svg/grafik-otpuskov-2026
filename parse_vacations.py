@@ -819,40 +819,71 @@ def main():
         if p["isReportStaff"]
         or (p["isRetail"] and not p.get("position") and p.get("storeVacations"))
     ]
-    conflicts = find_conflicts(report_people)
+    new_hires = [
+        {
+            "fio": p["fio"],
+            "position": p.get("position") or "",
+            "storeShort": p["storeShort"],
+            "roleGroup": p.get("roleGroup") or "",
+            "hireDate": p.get("hireDate"),
+        }
+        for p in report_people
+        if p.get("isNewHire")
+    ]
+    new_hires.sort(key=lambda r: (r["storeShort"], r["roleGroup"], r["fio"]))
+
+    dismissed = []
+    for rec in dropped_inactive:
+        rg = rec.get("roleGroup") or role_group(rec.get("position") or "")
+        if rec["storeShort"] not in RETAIL_STORES or rg not in REPORT_ROLES:
+            continue
+        dismissed.append(
+            {
+                "fio": rec["fio"],
+                "position": rec.get("position") or rg,
+                "storeShort": rec["storeShort"],
+                "roleGroup": rg,
+            }
+        )
+    dismissed.sort(key=lambda r: (r["storeShort"], r["roleGroup"], r["fio"]))
+
+    conflicts = find_conflicts([p for p in report_people if not p.get("isNewHire")])
     conflict_stores = sorted({c["storeShort"] for c in conflicts})
 
-    positions = sorted({p["position"] for p in report_people if p["position"]})
-    stores = sorted({p["storeShort"] for p in report_people if p["storeShort"]})
-    role_groups = [g for g in REPORT_ROLES if any(p["roleGroup"] == g for p in report_people)]
+    positions = sorted({p["position"] for p in report_people if p["position"] and not p.get("isNewHire")})
+    stores = sorted({p["storeShort"] for p in report_people if p["storeShort"] and not p.get("isNewHire")})
+    role_groups = [g for g in REPORT_ROLES if any(p["roleGroup"] == g and not p.get("isNewHire") for p in report_people)]
 
+    active_scheduled = [p for p in report_people if not p.get("isNewHire")]
     payload = {
         "generated": date.today().isoformat(),
         "year": 2026,
         "stats": {
-            "people": len(report_people),
+            "people": len(active_scheduled),
             "staffAsOf": "2026-09-14",
             "staffTotal": len(staff_rows),
-            "droppedInactive": len(dropped_inactive),
-            "officialRows": sum(len(p["official"]) for p in report_people),
-            "storeRows": sum(len(p["storeVacations"]) for p in report_people),
+            "droppedInactive": len(dismissed),
+            "officialRows": sum(len(p["official"]) for p in active_scheduled),
+            "storeRows": sum(len(p["storeVacations"]) for p in active_scheduled),
             "matchedStoreRows": matched_n,
-            "unmatchedStorePeople": sum(1 for p in report_people if p.get("unmatched")),
+            "unmatchedStorePeople": sum(1 for p in active_scheduled if p.get("unmatched")),
             "conflicts": len(conflicts),
             "conflictStores": len(conflict_stores),
-            "differ": sum(1 for p in report_people if p["status"] == "differ"),
-            "match": sum(1 for p in report_people if p["status"] == "match"),
-            "onlyOfficial": sum(1 for p in report_people if p["status"] == "only_official"),
-            "onlyStore": sum(1 for p in report_people if p["status"] == "only_store"),
-            "newHires": sum(1 for p in report_people if p.get("isNewHire")),
+            "differ": sum(1 for p in active_scheduled if p["status"] == "differ"),
+            "match": sum(1 for p in active_scheduled if p["status"] == "match"),
+            "onlyOfficial": sum(1 for p in active_scheduled if p["status"] == "only_official"),
+            "onlyStore": sum(1 for p in active_scheduled if p["status"] == "only_store"),
+            "newHires": len(new_hires),
         },
         "positions": positions,
         "stores": stores,
         "roleGroups": role_groups,
         "reportRoles": list(REPORT_ROLES),
-        "retailStores": sorted(s for s in RETAIL_STORES if any(p["storeShort"] == s for p in report_people)),
+        "retailStores": sorted(s for s in RETAIL_STORES if any(p["storeShort"] == s for p in active_scheduled)),
         "conflictStores": conflict_stores,
-        "people": people_list,
+        "people": [p for p in people_list if not p.get("isNewHire")],
+        "newHires": new_hires,
+        "dismissed": dismissed,
         "conflicts": conflicts,
     }
     OUT_JS.write_text(
