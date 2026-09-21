@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Календарь отпусков СПК — до 31.12.2026</title>
+  <meta name="theme-color" content="#4208a8" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geologica:wght@600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --p: #4208a8;
+      --p2: #5b21d6;
+      --orange: #f07a14;
+      --paper: #ffffff;
+      --bg: #fff7ef;
+      --ink: #1a1033;
+      --muted: #5c5278;
+      --line: rgba(66, 8, 168, 0.16);
+      --spk: #16a34a;
+      --combo: #f07a14;
+      --none: #c4c4c8;
+      --font: "Manrope", "Segoe UI", sans-serif;
+      --display: "Geologica", "Manrope", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+    .glow {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(900px 420px at 8% -8%, rgba(240, 122, 20, 0.22), transparent 58%),
+        radial-gradient(700px 380px at 96% 0%, rgba(66, 8, 168, 0.16), transparent 55%),
+        linear-gradient(180deg, #ffffff 0%, #fff7ef 42%, #f3e8ff 100%);
+    }
+    .page {
+      position: relative; z-index: 1;
+      width: min(1400px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: 20px 0 48px;
+    }
+    .postcard {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 18px 50px rgba(66, 8, 168, 0.08);
+    }
+    .hero {
+      padding: 26px 30px 22px;
+      background: linear-gradient(135deg, #4208a8 0%, #6b21c8 52%, #f07a14 100%);
+      color: #fff;
+    }
+    .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .brand img { height: 36px; width: auto; filter: brightness(0) invert(1); }
+    .chip {
+      background: rgba(255,255,255,.16);
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    h1 {
+      font-family: var(--display);
+      font-size: clamp(22px, 3.2vw, 34px);
+      margin: 0 0 8px;
+      letter-spacing: -0.03em;
+      font-weight: 800;
+    }
+    .hero p { margin: 0; max-width: 720px; opacity: .92; font-weight: 600; font-size: 14px; }
+    .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .links a {
+      color: #fff; text-decoration: none; font-weight: 700; font-size: 13px;
+      background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
+      border-radius: 999px; padding: 8px 14px;
+    }
+    .links a.ghost { background: transparent; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      background: var(--line);
+      border-top: 1px solid var(--line);
+    }
+    .stats div {
+      background: #fff;
+      padding: 14px 16px;
+    }
+    .stats b {
+      display: block;
+      font-family: var(--display);
+      font-size: 24px;
+      color: var(--p);
+      letter-spacing: -0.03em;
+    }
+    .stats span { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .body { padding: 22px 26px 28px; }
+    .note {
+      background: rgba(66, 8, 168, 0.06);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 13px;
+      font-weight: 650;
+      color: var(--muted);
+      margin: 0 0 18px;
+    }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 12px 18px;
+      margin: 0 0 16px; font-size: 12px; font-weight: 700; color: var(--muted);
+    }
+    .legend i {
+      display: inline-block; width: 12px; height: 12px; border-radius: 4px;
+      margin-right: 6px; vertical-align: -1px;
+    }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+    }
+    .toolbar button {
+      font: inherit; font-weight: 700; font-size: 13px;
+      border: 1px solid var(--line); background: #fff; color: var(--ink);
+      border-radius: 999px; padding: 8px 14px; cursor: pointer;
+    }
+    .toolbar button.active {
+      background: var(--p); color: #fff; border-color: var(--p);
+    }
+    .cal-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+    .gantt {
+      min-width: 980px;
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+    }
+    .gantt th, .gantt td {
+      border-bottom: 1px solid rgba(66, 8, 168, 0.08);
+      vertical-align: middle;
+    }
+    .gantt thead th {
+      position: sticky; top: 0; z-index: 3;
+      background: #f7f3ff;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      padding: 10px 6px;
+      text-align: center;
+    }
+    .gantt .sticky-left {
+      position: sticky; left: 0; z-index: 2;
+      background: #fff;
+      text-align: left;
+      min-width: 280px;
+      max-width: 320px;
+      padding: 10px 12px;
+      border-right: 1px solid var(--line);
+    }
+    .gantt thead .sticky-left { z-index: 4; background: #f7f3ff; }
+    .person { font-weight: 800; font-size: 13px; }
+    .meta { color: var(--muted); font-size: 11px; font-weight: 650; margin-top: 2px; }
+    .tag {
+      display: inline-block; margin-top: 4px;
+      font-size: 10px; font-weight: 800;
+      border-radius: 999px; padding: 2px 8px;
+    }
+    .tag.spk { background: #dcfce7; color: #166534; }
+    .tag.combo { background: #ffedd5; color: #9a3412; }
+    .tag.miss { background: #f3f4f6; color: #6b7280; }
+    .track {
+      position: relative;
+      height: 28px;
+      margin: 8px 4px;
+      background: repeating-linear-gradient(
+        90deg,
+        rgba(66,8,168,0.03) 0,
+        rgba(66,8,168,0.03) calc(100% / var(--days) - 1px),
+        transparent calc(100% / var(--days) - 1px),
+        transparent calc(100% / var(--days))
+      );
+      border-radius: 8px;
+    }
+    .bar {
+      position: absolute; top: 3px; bottom: 3px;
+      border-radius: 7px;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(22,163,74,.25);
+    }
+    .bar.combo {
+      background: linear-gradient(135deg, #f07a14, #c45e0a);
+      box-shadow: 0 2px 8px rgba(240,122,20,.25);
+    }
+    .months {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .month-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: #fff;
+    }
+    .month-card h3 {
+      margin: 0 0 8px;
+      font-family: var(--display);
+      font-size: 16px;
+      color: var(--p);
+    }
+    .month-card ul { margin: 0; padding: 0; list-style: none; }
+    .month-card li {
+      font-size: 12px; font-weight: 650;
+      padding: 6px 0;
+      border-top: 1px solid rgba(66,8,168,.08);
+    }
+    .month-card li:first-child { border-top: 0; }
+    .empty { color: var(--muted); font-weight: 650; font-size: 13px; }
+    footer { color: var(--muted); font-size: 12px; font-weight: 650; margin-top: 18px; }
+    @media (max-width: 900px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .months { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
+      .stats, .months { grid-template-columns: 1fr; }
+      .hero, .body { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="page">
+    <article class="postcard">
+      <header class="hero">
+        <div class="hero-top">
+          <div class="brand"><img src="assets/logo.png" alt="У Михалыча" /></div>
+          <div class="chip">Академия УМ · СПК</div>
+        </div>
+        <h1>Общий календарь отпусков СПК</h1>
+        <p>Все СПК компании и совмещающие эту должность. Список актуален на 02.09.2026 (тестирование по браку). Период: 21.09.2026 — 31.12.2026.</p>
+        <div class="links">
+          <a href="index.html">← полный график розницы</a>
+          <a class="ghost" href="https://akademia.um-ural.ru/akademiya-um-karta/">дорожная карта Академии</a>
+          <a class="ghost" href="https://akademia.um-ural.ru/spk-quiz-mihalych/">тест СПК</a>
+        </div>
+      </header>
+      <div class="stats" id="stats"></div>
+      <div class="body">
+        <p class="note">Источник списка: «СПК + брак 02.09.2026». Даты отпусков — из файлов магазинов, если есть, иначе из ЗУП. Совмещающие: в списке СПК, но в кадрах другая должность, либо несколько СПК на одной точке / СПК в нескольких магазинах.</p>
+        <div class="legend">
+          <span><i style="background:#16a34a"></i>отпуск СПК</span>
+          <span><i style="background:#f07a14"></i>совмещение / не только СПК</span>
+          <span><i style="background:#c4c4c8"></i>дат до конца года нет</span>
+        </div>
+        <div class="toolbar" id="filters">
+          <button type="button" class="active" data-f="all">Все</button>
+          <button type="button" data-f="vac">С отпуском</button>
+          <button type="button" data-f="combo">Совмещения</button>
+          <button type="button" data-f="none">Без дат</button>
+        </div>
+        <div class="cal-wrap">
+          <table class="gantt" id="gantt"></table>
+        </div>
+        <div class="months" id="months"></div>
+        <footer id="foot"></footer>
+      </div>
+    </article>
+  </div>
+  <script src="spk-calendar-data.js"></script>
+  <script>
+    if (!window.SPK_CALENDAR) {
+      document.body.insertAdjacentHTML("afterbegin",
+        "<p style='padding:24px;font:600 16px Manrope,sans-serif;color:#9b1530'>Не загрузился spk-calendar-data.js</p>");
+    } else {
+    const D = window.SPK_CALENDAR;
+    const FROM = new Date(D.fromDate + "T00:00:00");
+    const TO = new Date(D.toDate + "T00:00:00");
+    const DAYS = Math.round((TO - FROM) / 86400000) + 1;
+    const MONTHS_RU = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+
+    function fmt(iso) {
+      const [y,m,d] = iso.split("-");
+      return d + "." + m;
+    }
+    function dayIndex(iso) {
+      const dt = new Date(iso + "T00:00:00");
+      return Math.round((dt - FROM) / 86400000);
+    }
+    function passes(row, f) {
+      if (f === "all") return true;
+      if (f === "vac") return row.periodsRemaining.length > 0;
+      if (f === "combo") return row.combined;
+      if (f === "none") return row.periodsRemaining.length === 0;
+      return true;
+    }
+
+    document.getElementById("stats").innerHTML = [
+      ["rows", "строк в списке"],
+      ["uniquePeople", "уникальных людей"],
+      ["matched", "нашли в графиках"],
+      ["withVacation", "с отпуском до 31.12"],
+      ["combined", "совмещения / несколько точек"]
+    ].map(([k, label]) => `<div><b>${D.stats[k]}</b><span>${label}</span></div>`).join("");
+
+    // month headers: group days
+    const monthSpans = [];
+    let cur = null;
+    for (let i = 0; i < DAYS; i++) {
+      const dt = new Date(FROM.getTime() + i * 86400000);
+      const key = dt.getMonth();
+      if (!cur || cur.m !== key) {
+        cur = { m: key, start: i, days: 1, label: MONTHS_RU[key] };
+        monthSpans.push(cur);
+      } else cur.days++;
+    }
+
+    function render(filter) {
+      const rows = D.people.filter(r => passes(r, filter));
+      const headMonths = monthSpans.map(ms =>
+        `<th colspan="${ms.days}">${ms.label}</th>`
+      ).join("");
+
+      // week ticks every ~7 days for readability in second header
+      let ticks = "";
+      for (let i = 0; i < DAYS; i += 7) {
+        const dt = new Date(FROM.getTime() + i * 86400000);
+        const span = Math.min(7, DAYS - i);
+        const dd = String(dt.getDate()).padStart(2, "0");
+        const mm = String(dt.getMonth() + 1).padStart(2, "0");
+        ticks += `<th colspan="${span}">${dd}.${mm}</th>`;
+      }
+
+      const body = rows.map(r => {
+        const bars = r.periodsRemaining.map(p => {
+          const a = dayIndex(p.start);
+          const b = dayIndex(p.end);
+          const left = (a / DAYS) * 100;
+          const width = ((b - a + 1) / DAYS) * 100;
+          const cls = r.combined || !r.isSpkRole ? "bar combo" : "bar";
+          const label = fmt(p.start) + "–" + fmt(p.end);
+          return `<div class="${cls}" style="left:${left}%;width:${width}%" title="${r.fio}: ${label}">${width > 8 ? label : ""}</div>`;
+        }).join("");
+        const tags = [];
+        if (r.isSpkRole) tags.push('<span class="tag spk">СПК</span>');
+        if (r.combined || !r.isSpkRole) tags.push('<span class="tag combo">совмещение</span>');
+        if (!r.matched) tags.push('<span class="tag miss">нет в графиках</span>');
+        if (r.periodsRemaining.length === 0) tags.push('<span class="tag miss">без дат до 31.12</span>');
+        const note = (r.notes || []).join(" · ");
+        return `<tr>
+          <td class="sticky-left">
+            <div class="person">${r.fioShort}</div>
+            <div class="meta">${r.store}${note ? " · " + note : ""}</div>
+            ${tags.join(" ")}
+          </td>
+          <td colspan="${DAYS}">
+            <div class="track" style="--days:${DAYS}">${bars || ""}</div>
+          </td>
+        </tr>`;
+      }).join("");
+
+      document.getElementById("gantt").innerHTML = `
+        <thead>
+          <tr><th class="sticky-left">СПК / магазин</th>${headMonths}</tr>
+          <tr><th class="sticky-left"></th>${ticks}</tr>
+        </thead>
+        <tbody>${body || `<tr><td class="sticky-left" colspan="2"><span class="empty">Нет строк по фильтру</span></td></tr>`}</tbody>`;
+
+      // month cards
+      const byMonth = {9:[],10:[],11:[],12:[]};
+      rows.forEach(r => {
+        r.periodsRemaining.forEach(p => {
+          let d = new Date(p.start + "T00:00:00");
+          const end = new Date(p.end + "T00:00:00");
+          const seen = new Set();
+          while (d <= end) {
+            const m = d.getMonth() + 1;
+            if (byMonth[m] && !seen.has(m)) {
+              byMonth[m].push({ fio: r.fioShort, store: r.store, start: p.start, end: p.end, combo: r.combined });
+              seen.add(m);
+            }
+            d = new Date(d.getTime() + 86400000);
+          }
+        });
+      });
+      document.getElementById("months").innerHTML = [9,10,11,12].map(m => {
+        const items = byMonth[m];
+        const lis = items.length
+          ? items.map(x => `<li><b>${x.fio}</b> · ${fmt(x.start)}–${fmt(x.end)}<br><span style="color:var(--muted)">${x.store}${x.combo ? " · совм." : ""}</span></li>`).join("")
+          : `<li class="empty">Никого в отпуске</li>`;
+        return `<div class="month-card"><h3>${MONTHS_RU[m-1]} 2026</h3><ul>${lis}</ul></div>`;
+      }).join("");
+    }
+
+    let filter = "all";
+    document.getElementById("filters").addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      filter = btn.dataset.f;
+      [...document.getElementById("filters").children].forEach(b => b.classList.toggle("active", b === btn));
+      render(filter);
+    });
+    render("all");
+    document.getElementById("foot").textContent =
+      `Список на ${D.listAsOf} · источник: ${D.listSource} · собрано ${D.generated} · даты из графиков розницы`;
+    }
+  </script>
+</body>
+</html>
